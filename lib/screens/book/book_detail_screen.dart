@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qine_corner/common/widgets/primary_button.dart';
 import 'package:qine_corner/common/widgets/secondary_button.dart';
+import 'package:qine_corner/core/services/download_service.dart';
 import '../../core/models/book.dart';
 import '../../core/models/category.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,8 +10,11 @@ import '../../common/widgets/app_text.dart';
 import '../../common/widgets/cached_image.dart';
 import '../../common/widgets/loading_animation.dart';
 import '../../core/providers/categories_provider.dart';
+import '../../core/providers/favorite_provider.dart';
 import '../../screens/error/widgets/animated_error_widget.dart';
 import 'pdf_viewer_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'widgets/more_from_author.dart';
 
 class BookDetailScreen extends ConsumerWidget {
   final Book book;
@@ -22,6 +26,22 @@ class BookDetailScreen extends ConsumerWidget {
     final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final categoriesAsync = ref.watch(categoriesProvider);
+    final favorites = ref.watch(favoriteProvider);
+    final isFavorite = favorites.any((b) => b.id == book.id);
+
+    Future<void> _downloadBook(BuildContext context, WidgetRef ref) async {
+      final fileName = book.filePath.split('/').last;
+      await DownloadService.downloadPDF(
+        book.filePath,
+        fileName,
+        context,
+        ref,
+      );
+    }
+
+    void _toggleFavorite() {
+      ref.read(favoriteProvider.notifier).toggleFavorite(book);
+    }
 
     return Scaffold(
       body: categoriesAsync.when(
@@ -58,6 +78,23 @@ class BookDetailScreen extends ConsumerWidget {
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back),
                         onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 10,
+                    right: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.black54 : Colors.white54,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : null,
+                        ),
+                        onPressed: _toggleFavorite,
                       ),
                     ),
                   ),
@@ -107,7 +144,7 @@ class BookDetailScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         AppText.body(
-                          'By ${book.author}',
+                          'By ${book.author.name}',
                           color: isDark
                               ? AppColors.darkTextSecondary
                               : AppColors.lightTextSecondary,
@@ -132,7 +169,7 @@ class BookDetailScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
 
                     // Categories with box shadow
                     SizedBox(
@@ -202,7 +239,7 @@ class BookDetailScreen extends ConsumerWidget {
                         },
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
 
                     // Description
                     AppText.h2('Description'),
@@ -214,7 +251,8 @@ class BookDetailScreen extends ConsumerWidget {
                           : AppColors.lightTextSecondary,
                       bold: false,
                     ),
-                    const SizedBox(height: 32),
+
+                    const SizedBox(height: 10),
 
                     // Action Buttons
                     Padding(
@@ -230,9 +268,7 @@ class BookDetailScreen extends ConsumerWidget {
                             children: [
                               Expanded(
                                 child: PrimaryButton(
-                                  onPressed: () {
-                                    // TODO: Implement download functionality
-                                  },
+                                  onPressed: () => _downloadBook(context, ref),
                                   text: showLabels ? 'Download' : '',
                                   icon: Icons.download_rounded,
                                   padding:
@@ -242,11 +278,11 @@ class BookDetailScreen extends ConsumerWidget {
                               const SizedBox(width: 5),
                               Expanded(
                                 child: SecondaryButton(
-                                  onPressed: () {
-                                    // TODO: Implement favorite functionality
-                                  },
+                                  onPressed: _toggleFavorite,
                                   text: showLabels ? 'Favorite' : '',
-                                  icon: Icons.favorite_rounded,
+                                  icon: isFavorite
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
                                   outlined: false,
                                   padding:
                                       const EdgeInsets.symmetric(horizontal: 8),
@@ -277,7 +313,11 @@ class BookDetailScreen extends ConsumerWidget {
                         },
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
+
+                    // More from author section
+                    MoreFromAuthor(currentBook: book),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),

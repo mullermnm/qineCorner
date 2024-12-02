@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme.dart';
 
-class ThemeProvider with ChangeNotifier {
+class ThemeNotifier extends StateNotifier<ThemeMode> {
   static const String _themeKey = 'theme_mode';
   late SharedPreferences _prefs;
-  ThemeMode _themeMode = ThemeMode.system;
 
-  ThemeProvider() {
+  ThemeNotifier() : super(ThemeMode.system) {
     _loadThemeMode();
   }
 
-  ThemeMode get themeMode => _themeMode;
-  bool get isDarkMode => _themeMode == ThemeMode.dark;
+  ThemeMode get themeMode => state;
+  bool get isDarkMode => state == ThemeMode.dark;
 
   ThemeData get theme => isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme;
 
@@ -32,11 +32,10 @@ class ThemeProvider with ChangeNotifier {
       final String? storedTheme = _prefs.getString(_themeKey);
       
       if (storedTheme != null) {
-        _themeMode = ThemeMode.values.firstWhere(
+        state = ThemeMode.values.firstWhere(
           (mode) => mode.toString() == storedTheme,
           orElse: () => ThemeMode.system,
         );
-        notifyListeners();
       }
     } catch (e) {
       debugPrint('Error loading theme mode: $e');
@@ -45,10 +44,9 @@ class ThemeProvider with ChangeNotifier {
 
   // Update theme mode and save to preferences
   Future<void> setThemeMode(ThemeMode mode) async {
-    if (_themeMode == mode) return;
+    if (state == mode) return;
 
-    _themeMode = mode;
-    notifyListeners();
+    state = mode;
 
     try {
       await _prefs.setString(_themeKey, mode.toString());
@@ -58,7 +56,11 @@ class ThemeProvider with ChangeNotifier {
   }
 
   // Toggle between light and dark theme
-  Future<void> toggleTheme() async {
-    await setThemeMode(isDarkMode ? ThemeMode.light : ThemeMode.dark);
+  void toggleTheme() {
+    state = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
   }
 }
+
+final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
+  return ThemeNotifier();
+});

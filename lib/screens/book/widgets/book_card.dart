@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/book.dart';
-import '../../../core/theme/theme_helper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qine_corner/core/providers/favorite_provider.dart';
+import 'package:qine_corner/core/providers/library_provider.dart';
+import 'package:qine_corner/core/models/book.dart';
+import 'package:qine_corner/core/theme/app_colors.dart';
+import 'package:qine_corner/core/theme/theme_helper.dart';
+import 'package:qine_corner/screens/library/widgets/add_to_libraries_dialog.dart';
 import '../book_detail_screen.dart';
 
-class BookCard extends StatelessWidget {
+class BookCard extends ConsumerWidget {
   final Book book;
   final VoidCallback? onTap;
 
@@ -13,9 +18,43 @@ class BookCard extends StatelessWidget {
     this.onTap,
   });
 
+  void _showAddToLibrariesDialog(BuildContext context, WidgetRef ref) {
+    final libraries = ref.read(libraryProvider);
+
+    showDialog(
+      context: context,
+      builder: (context) => AddToLibrariesDialog(
+        libraries: libraries,
+        book: book,
+        onAddToLibrary: (library) {
+          ref.read(libraryProvider.notifier).addBookToLibrary(library.id, book);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Added "${book.title}" to "${library.name}"'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        },
+        onCreateLibrary: (name) {
+          ref
+              .read(libraryProvider.notifier)
+              .addLibrary(name, initialBook: book);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Created library "$name" with "${book.title}"'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final favorites = ref.watch(favoriteProvider);
+    final isFavorite = favorites.any((b) => b.id == book.id);
 
     return GestureDetector(
       onTap: () {
@@ -27,83 +66,125 @@ class BookCard extends StatelessWidget {
         );
         onTap?.call();
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.surfaceColor,
+      child: Card(
+        elevation: 2,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          side: BorderSide(
+            color:
+                isDark ? AppColors.darkBackground : AppColors.lightBackground,
+            width: 1,
+          ),
         ),
-        child: Column(
-          children: [
-            // Book Cover
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-              child: SizedBox(
-                height: 160,
-                width: double.infinity,
-                child: Image.asset(
-                  book.coverUrl,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topLeft,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.book, size: 50),
-                    );
-                  },
+        child: SizedBox(
+          height: 280,
+          child: Column(
+            children: [
+              Expanded(
+                flex: 8,
+                child: Stack(
+                  children: [
+                    SizedBox.expand(
+                      child: book.coverUrl != null
+                          ? Image.asset(
+                              book.coverUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildPlaceholder(),
+                            )
+                          : _buildPlaceholder(),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : Colors.white,
+                            ),
+                            onPressed: () {
+                              ref
+                                  .read(favoriteProvider.notifier)
+                                  .toggleFavorite(book);
+                            },
+                            iconSize: 20,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                          const SizedBox(width: 3),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.bookmark_border,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: () =>
+                                _showAddToLibrariesDialog(context, ref),
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            // Content
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          book.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          book.author,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: context.textColor.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ),
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                      top: 1, left: 1, right: 4, bottom: 1),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        book.title,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        book.author.name,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.color
+                                  ?.withOpacity(0.7),
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  Icon(
-                    Icons.chevron_right,
-                    size: 20,
-                    color: context.textColor.withOpacity(0.6),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      color: Colors.grey.shade300,
+      child: const Center(
+        child: Icon(
+          Icons.book,
+          size: 40,
+          color: Colors.grey,
         ),
       ),
     );

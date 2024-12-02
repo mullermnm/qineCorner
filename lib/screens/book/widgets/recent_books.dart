@@ -17,11 +17,11 @@ class RecentBooks extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: AppText.h2('Recent Books'),
-        ),
-        const SizedBox(height: 16),
+        // Padding(
+        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        //   child: AppText.h2('Recent Books'),
+        // ),
+        // const SizedBox(height: 16),
         SizedBox(
           height: 280, // Adjust this height based on your BookCard height
           child: booksAsync.when(
@@ -42,7 +42,7 @@ class RecentBooks extends ConsumerWidget {
 
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 itemCount: recentBooks.length,
                 itemBuilder: (context, index) {
                   final book = recentBooks[index];

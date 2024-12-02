@@ -8,7 +8,7 @@ class BooksNotifier extends StateNotifier<AsyncValue<List<Book>>> {
   }
 
   final _searchService = SearchService();
-  static const _itemsPerPage = 9;
+  static const _itemsPerPage = 8;
   int _currentPage = 0;
   String? _currentCategory;
 
@@ -63,7 +63,7 @@ class BooksNotifier extends StateNotifier<AsyncValue<List<Book>>> {
     // Calculate pagination slice
     final start = page * _itemsPerPage;
     final end = start + _itemsPerPage;
-    
+
     if (start >= books.length) {
       return [];
     }

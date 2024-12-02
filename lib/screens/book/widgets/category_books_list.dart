@@ -76,7 +76,7 @@ class CategoryBooksListView extends StatefulWidget {
 }
 
 class _CategoryBooksListViewState extends State<CategoryBooksListView> {
-  static const int _itemsPerPage = 9;
+  static const int _itemsPerPage = 8;
   bool _isLoadingMore = false;
 
   @override

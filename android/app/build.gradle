@@ -16,7 +16,7 @@ if (localPropertiesFile.exists()) {
 android {
     namespace = "com.example.qine_corner"
     compileSdk = 34
-
+    compileSdkVersion flutter.compileSdkVersion
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8

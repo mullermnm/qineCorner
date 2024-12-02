@@ -20,7 +20,7 @@ class _ScaffoldWithBottomNavBarState extends State<ScaffoldWithBottomNavBar> {
 
   static const List<(String path, String label, IconData icon)> _tabs = [
     ('/home', 'Home', Icons.home_outlined),
-    ('/downloads', 'Downloads', Icons.download_outlined),
+    ('/libraries', 'Libraries', Icons.library_books_outlined),
     ('/settings', 'Settings', Icons.settings_outlined),
   ];
 

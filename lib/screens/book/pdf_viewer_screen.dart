@@ -78,6 +78,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     showDialog(
       context: context,
       builder: (context) {
+        _pageController.text = _currentPage.toString();
         return AlertDialog(
           title: const Text('Go to Page'),
           content: TextField(
@@ -96,8 +97,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             TextButton(
               onPressed: () {
                 final pageNumber = int.tryParse(_pageController.text);
-                if (pageNumber != null && 
-                    pageNumber >= 1 && 
+                if (pageNumber != null &&
+                    pageNumber >= 1 &&
                     pageNumber <= _totalPages) {
                   _pdfViewerController.jumpToPage(pageNumber);
                   setState(() {

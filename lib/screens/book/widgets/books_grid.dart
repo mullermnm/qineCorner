@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qine_corner/common/widgets/app_text.dart';
 import '../../../core/models/book.dart';
 import '../../../core/providers/books_provider.dart';
 import '../../../screens/error/widgets/animated_error_widget.dart';
@@ -26,8 +27,9 @@ class BooksGrid extends ConsumerWidget {
       ),
       data: (books) {
         if (books.isEmpty) {
-          return const Center(
-            child: Text('No books found'),
+          return AnimatedErrorWidget(
+            message: 'Failed to load books. Please try again.',
+            onRetry: () => ref.invalidate(booksProvider),
           );
         }
 
@@ -57,13 +59,19 @@ class BooksGridWidget extends StatefulWidget {
 }
 
 class _BooksGridWidgetState extends State<BooksGridWidget> {
-  static const int _itemsPerPage = 9;
+  static const int _itemsPerPage = 8;
   bool _isLoadingMore = false;
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: AppText.h2('Popular Books'),
+        ),
+        const SizedBox(height: 6),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

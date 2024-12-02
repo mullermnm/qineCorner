@@ -1,7 +1,9 @@
+import 'author.dart';
+
 class Book {
   final String id;
   final String title;
-  final String author;
+  final Author author;
   final String description;
   final String coverUrl;
   final double rating;
@@ -26,7 +28,7 @@ class Book {
     return Book(
       id: json['id'] as String,
       title: json['title'] as String,
-      author: json['author'] as String,
+      author: Author.fromJson(json['author'] as Map<String, dynamic>),
       description: json['description'] as String,
       coverUrl: json['coverUrl'] as String,
       rating: (json['rating'] as num).toDouble(),
@@ -41,7 +43,7 @@ class Book {
     return {
       'id': id,
       'title': title,
-      'author': author,
+      'author': author.toJson(),
       'description': description,
       'coverUrl': coverUrl,
       'rating': rating,
@@ -55,7 +57,7 @@ class Book {
   Book copyWith({
     String? id,
     String? title,
-    String? author,
+    Author? author,
     String? description,
     String? coverUrl,
     double? rating,
