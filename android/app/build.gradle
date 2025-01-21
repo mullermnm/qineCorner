@@ -43,6 +43,11 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
+
+    dependencies {
+        implementation 'androidx.work:work-runtime:2.8.1'
+        implementation 'androidx.work:work-runtime-ktx:2.8.1'
+    }
 }
 
 flutter {

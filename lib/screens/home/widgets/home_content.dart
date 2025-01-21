@@ -18,6 +18,25 @@ class HomeContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedCategoryId = ref.watch(selectedCategoryProvider);
 
+    String getCategoryTitle(String categoryId) {
+      switch (categoryId) {
+        case 'fiction':
+          return 'Fiction Books';
+        case 'non-fiction':
+          return 'Non-Fiction Books';
+        case 'science':
+          return 'Science & Technology';
+        case 'business':
+          return 'Business & Economics';
+        case 'children':
+          return 'Children\'s Books';
+        default:
+          return categoryId.split('-').map((word) => 
+            word[0].toUpperCase() + word.substring(1)
+          ).join(' ');
+      }
+    }
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -26,7 +45,8 @@ class HomeContent extends ConsumerWidget {
           CategoriesList(
             onCategorySelected: (category) {
               ref.read(selectedCategoryProvider.notifier).state =
-                  category.id == selectedCategoryId ? null : category.id;
+                  (category.id == selectedCategoryId ? null : category.id)
+                      as String?;
             },
             selectedCategoryId: selectedCategoryId,
           ),
@@ -43,13 +63,24 @@ class HomeContent extends ConsumerWidget {
                 const SizedBox(height: 10),
                 selectedCategoryId == null
                     ? const RecentBooks()
-                    : CategoryBooksList(categoryId: selectedCategoryId),
+                    : CategoryBooksList(
+                        categoryId: selectedCategoryId,
+                        title: getCategoryTitle(selectedCategoryId),
+                      ),
               ],
             ),
           ),
           if (selectedCategoryId == null) ...[
             const SizedBox(height: 5),
-            const BooksGrid(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: AppText.h2('Popular Books'),
+            ),
+            const SizedBox(height: 10),
+            const SizedBox(
+              height: 600, // Fixed height for grid
+              child: BooksGrid(),
+            ),
             const SizedBox(height: 10),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 10.0),

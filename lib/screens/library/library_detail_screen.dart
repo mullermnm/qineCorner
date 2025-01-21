@@ -100,8 +100,10 @@ class LibraryDetailScreen extends ConsumerWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => PdfViewerScreen(
-                              book: book,
+                            builder: (context) => ProviderScope(
+                              child: PdfViewerScreen(
+                                book: book,
+                              ),
                             ),
                           ),
                         );

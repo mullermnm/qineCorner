@@ -1,9 +1,19 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 import 'package:qine_corner/common/widgets/loading_animation.dart';
+import 'package:qine_corner/core/models/book.dart';
 import 'package:qine_corner/core/providers/library_provider.dart';
+import 'package:qine_corner/core/providers/book_shelf_provider.dart';
+import 'package:qine_corner/screens/book/pdf_viewer_screen.dart';
 import 'package:qine_corner/screens/library/widgets/library_card.dart';
+import 'package:qine_corner/screens/library/widgets/recently_opened_books.dart';
 import 'package:qine_corner/core/theme/app_colors.dart';
+import 'package:qine_corner/screens/notes/notes_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class LibrariesScreen extends ConsumerStatefulWidget {
@@ -15,20 +25,305 @@ class LibrariesScreen extends ConsumerStatefulWidget {
 
 class _LibrariesScreenState extends ConsumerState<LibrariesScreen> {
   int displayCount = 4;
-  bool isLoading = false;
 
   Future<void> _loadMore() async {
     setState(() {
-      isLoading = true;
+      displayCount += 10;
     });
+  }
 
-    // Simulate loading delay
-    await Future.delayed(const Duration(milliseconds: 800));
+  void _surpriseMe() {
+    final librariesAsync = ref.watch(libraryProvider.notifier).state;
+    if (librariesAsync == null || librariesAsync.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No books available to surprise you!'),
+        ),
+      );
+      return;
+    }
 
-    setState(() {
-      displayCount += 4;
-      isLoading = false;
-    });
+    final random = Random();
+    final randomLibrary = librariesAsync[random.nextInt(librariesAsync.length)];
+    if (randomLibrary.books.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selected library has no books!'),
+        ),
+      );
+      return;
+    }
+
+    final randomBook =
+        randomLibrary.books[random.nextInt(randomLibrary.books.length)];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProviderScope(
+          child: PdfViewerScreen(
+            book: randomBook,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final libraries = ref.watch(libraryProvider.notifier).state;
+
+    if (libraries == null) {
+      return const Scaffold(
+        body: Center(
+          child: LoadingAnimation(),
+        ),
+      );
+    }
+
+    final displayedLibraries = libraries.take(displayCount).toList();
+    final hasMore = libraries.length > displayCount;
+
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          toolbarHeight: 80,
+          title: const Text('Library'),
+          actions: [
+            GestureDetector(
+              onTap: _surpriseMe,
+              child: Lottie.asset(
+                'assets/animations/surpriseButton.json',
+                fit: BoxFit.cover,
+                repeat: true,
+                onLoaded: (composition) {
+                  // You can configure the Lottie animation controller here if needed
+                },
+              ),
+            ),
+          ],
+          bottom: const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(text: 'All Books'),
+              Tab(text: 'Currently Reading'),
+              Tab(text: 'To Read'),
+              Tab(text: 'Finished'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // All Books Tab
+            Column(
+              children: [
+                const RecentlyOpenedBooks(),
+                Expanded(
+                  child: libraries.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.library_books,
+                                size: 64,
+                                color: Theme.of(context).disabledColor,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No libraries yet',
+                                style: TextStyle(
+                                  color: Theme.of(context).disabledColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(16),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.75,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                          itemCount:
+                              displayedLibraries.length + (hasMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == displayedLibraries.length) {
+                              return TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    displayCount += 10;
+                                  });
+                                },
+                                child: const Text('Show More'),
+                              );
+                            }
+                            final library = displayedLibraries[index];
+                            return LibraryCard(
+                              library: library,
+                              onTap: () {
+                                context.push('/library/${library.id}',
+                                    extra: library);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+            // Currently Reading Tab
+            ref.watch(bookShelfProvider).when(
+                  data: (shelves) {
+                    return _buildShelfGrid(
+                      shelves[BookShelf.currentlyReading] ?? [],
+                    );
+                  },
+                  loading: () => const Center(child: LoadingAnimation()),
+                  error: (error, _) => Center(child: Text('Error: $error')),
+                ),
+            // To Read Tab
+            ref.watch(bookShelfProvider).when(
+                  data: (shelves) {
+                    return _buildShelfGrid(
+                      shelves[BookShelf.toRead] ?? [],
+                    );
+                  },
+                  loading: () => const Center(child: LoadingAnimation()),
+                  error: (error, _) => Center(child: Text('Error: $error')),
+                ),
+            // Finished Tab
+            ref.watch(bookShelfProvider).when(
+                  data: (shelves) {
+                    return _buildShelfGrid(
+                      shelves[BookShelf.finished] ?? [],
+                    );
+                  },
+                  loading: () => const Center(child: LoadingAnimation()),
+                  error: (error, _) => Center(child: Text('Error: $error')),
+                ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final name = await _showCreateLibraryDialog(context);
+            if (name != null && name.isNotEmpty && context.mounted) {
+              await ref.read(libraryProvider.notifier).addLibrary(name);
+            }
+          },
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShelfGrid(List<Book> books) {
+    if (books.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.book,
+              size: 64,
+              color: Theme.of(context).disabledColor,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No books in this shelf',
+              style: TextStyle(
+                color: Theme.of(context).disabledColor,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: books.length,
+      itemBuilder: (context, index) {
+        final book = books[index];
+        return GestureDetector(
+          onTap: () {
+            context.push('/book/${book.id}', extra: book);
+          },
+          onLongPress: () {
+            _showMoveToShelfDialog(book);
+          },
+          child: Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Image.asset(
+                    book.coverUrl,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    book.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showMoveToShelfDialog(Book book) async {
+    final shelf = await showDialog<BookShelf>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Move to Shelf'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Currently Reading'),
+              onTap: () => Navigator.pop(context, BookShelf.currentlyReading),
+            ),
+            ListTile(
+              title: const Text('To Read'),
+              onTap: () => Navigator.pop(context, BookShelf.toRead),
+            ),
+            ListTile(
+              title: const Text('Finished'),
+              onTap: () => Navigator.pop(context, BookShelf.finished),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shelf != null && mounted) {
+      await ref.read(bookShelfProvider.notifier).addBookToShelf(book, shelf);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Moved "${book.title}" to ${shelf.toString().split('.').last}'),
+          ),
+        );
+      }
+    }
   }
 
   Future<String?> _showCreateLibraryDialog(BuildContext context) {
@@ -39,12 +334,10 @@ class _LibrariesScreenState extends ConsumerState<LibrariesScreen> {
         title: const Text('Create Library'),
         content: TextField(
           controller: controller,
-          autofocus: true,
           decoration: const InputDecoration(
-            hintText: 'Library name',
-            border: OutlineInputBorder(),
+            labelText: 'Library Name',
           ),
-          onSubmitted: (value) => Navigator.pop(context, value),
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -56,100 +349,6 @@ class _LibrariesScreenState extends ConsumerState<LibrariesScreen> {
             child: const Text('Create'),
           ),
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final libraries = ref.watch(libraryProvider);
-    final displayedLibraries = libraries.take(displayCount).toList();
-    final hasMoreLibraries = libraries.length > displayCount;
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        title: const Text('My Libraries'),
-        backgroundColor: isDark ? AppColors.darkSurfaceBackground : AppColors.lightSurfaceBackground,
-      ),
-      body: libraries.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.library_books,
-                    size: 64,
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.lightTextSecondary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No libraries yet',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create a library to start organizing your books',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.lightTextSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.75,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    itemCount: displayedLibraries.length,
-                    itemBuilder: (context, index) {
-                      final library = displayedLibraries[index];
-                      return LibraryCard(
-                        library: library,
-                        onTap: () => context.go('/library/${library.id}'),
-                      );
-                    },
-                  ),
-                ),
-                if (hasMoreLibraries)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: isLoading
-                        ? const LoadingAnimation()
-                        : TextButton.icon(
-                            onPressed: _loadMore,
-                            icon: const Icon(Icons.expand_more),
-                            label: const Text('Show More Libraries'),
-                          ),
-                  ),
-              ],
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final name = await _showCreateLibraryDialog(context);
-          if (name != null && name.isNotEmpty && context.mounted) {
-            await ref.read(libraryProvider.notifier).addLibrary(name);
-          }
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }

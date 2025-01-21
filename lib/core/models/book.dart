@@ -6,7 +6,7 @@ class Book {
   final Author author;
   final String description;
   final String coverUrl;
-  final double rating;
+  final double? rating;  // Make rating optional
   final List<String> categories; // List of category IDs
   final DateTime publishedAt;
   final String filePath; // Path to the PDF file
@@ -17,7 +17,7 @@ class Book {
     required this.author,
     required this.description,
     required this.coverUrl,
-    required this.rating,
+    this.rating = 0.0,  // Default to 0.0 if not provided
     required this.categories,
     required this.publishedAt,
     required this.filePath,
@@ -30,11 +30,11 @@ class Book {
       title: json['title'] as String,
       author: Author.fromJson(json['author'] as Map<String, dynamic>),
       description: json['description'] as String,
-      coverUrl: json['coverUrl'] as String,
-      rating: (json['rating'] as num).toDouble(),
+      coverUrl: json['cover_url'] as String,  // Changed from coverUrl to cover_url
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,  // Handle null rating
       categories: List<String>.from(json['categories'] as List),
-      publishedAt: DateTime.parse(json['publishedAt'] as String),
-      filePath: json['filePath'] as String,
+      publishedAt: DateTime.parse(json['published_at'] as String),  // Changed from publishedAt to published_at
+      filePath: json['file_path'] as String,  // Changed from filePath to file_path
     );
   }
 
@@ -45,11 +45,11 @@ class Book {
       'title': title,
       'author': author.toJson(),
       'description': description,
-      'coverUrl': coverUrl,
+      'cover_url': coverUrl,  // Changed to match API
       'rating': rating,
       'categories': categories,
-      'publishedAt': publishedAt.toIso8601String(),
-      'filePath': filePath,
+      'published_at': publishedAt.toIso8601String(),  // Changed to match API
+      'file_path': filePath,  // Changed to match API
     };
   }
 

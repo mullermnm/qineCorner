@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qine_corner/core/theme/app_colors.dart';
+import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/core/theme/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -9,72 +9,291 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentTheme = ref.watch(themeProvider);
-    final themeNotifier = ref.read(themeProvider.notifier);
-    final isDark = currentTheme == ThemeMode.dark;
+    final authState = ref.watch(authNotifierProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final user = authState.when(
+      data: (state) => state?.user,
+      loading: () => null,
+      error: (_, __) => null,
+    );
+
+    if (user == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: IconButton(
-              icon: Icon(
-                isDark ? Icons.light_mode : Icons.dark_mode,
-                size: 32,
-                color: isDark ? Colors.white : AppColors.darkBackground,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 50,
+            floating: false,
+            pinned: true,
+            title: const Text('Settings'),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
+                  ),
+                ),
               ),
-              onPressed: () {
-                themeNotifier.setThemeMode(
-                  isDark ? ThemeMode.light : ThemeMode.dark,
-                );
-              },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionTitle(context, 'Account'),
+                  Card(
+                    elevation: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            isDark
+                                ? Colors.grey[900]!
+                                : Theme.of(context).colorScheme.surface,
+                            isDark
+                                ? Colors.grey[850]!
+                                : Theme.of(context).colorScheme.surface,
+                          ],
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          if (user != null)
+                            ListTile(
+                              leading: Hero(
+                                tag: 'profile-photo',
+                                child: CircleAvatar(
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.1),
+                                  backgroundImage: user.profileImage != null
+                                      ? NetworkImage(user.profileImage!)
+                                      : null,
+                                  child: user.profileImage == null
+                                      ? Icon(
+                                          Icons.person,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                        )
+                                      : null,
+                                ),
+                              ),
+                              title: Text(user.name),
+                              subtitle: Text(user.phone),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.push('/profile'),
+                            )
+                          else
+                            ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.1),
+                                child: Icon(
+                                  Icons.person_outline,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                              title: const Text('Sign in'),
+                              subtitle: const Text('Tap to sign in or create an account'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.push('/login'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle(context, 'Reading'),
+                  Card(
+                    elevation: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            isDark
+                                ? Colors.grey[900]!
+                                : Theme.of(context).colorScheme.surface,
+                            isDark
+                                ? Colors.grey[850]!
+                                : Theme.of(context).colorScheme.surface,
+                          ],
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildSettingsTile(
+                            context,
+                            icon: Icons.book,
+                            title: 'Reading Preferences',
+                            subtitle: 'Goals, notifications, and more',
+                            onTap: () {
+                              if (user == null) {
+                                context.push('/login');
+                                return;
+                              }
+                              context.push('/reading-preferences');
+                            },
+                          ),
+                          const Divider(height: 1),
+                          _buildSettingsTile(
+                            context,
+                            icon: Icons.download,
+                            title: 'Downloads',
+                            subtitle: 'Manage your downloaded content',
+                            onTap: () {
+                              if (user == null) {
+                                context.push('/login');
+                                return;
+                              }
+                              context.push('/downloads');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle(context, 'Appearance'),
+                  Card(
+                    elevation: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            isDark
+                                ? Colors.grey[900]!
+                                : Theme.of(context).colorScheme.surface,
+                            isDark
+                                ? Colors.grey[850]!
+                                : Theme.of(context).colorScheme.surface,
+                          ],
+                        ),
+                      ),
+                      child: SwitchListTile(
+                        secondary: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            isDark ? Icons.dark_mode : Icons.light_mode,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        title: const Text('Dark Mode'),
+                        subtitle: Text(
+                          isDark ? 'Dark theme enabled' : 'Light theme enabled',
+                        ),
+                        value: isDark,
+                        onChanged: (value) {
+                          ref.read(themeProvider.notifier).toggleTheme();
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle(context, 'Support'),
+                  Card(
+                    elevation: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            isDark
+                                ? Colors.grey[900]!
+                                : Theme.of(context).colorScheme.surface,
+                            isDark
+                                ? Colors.grey[850]!
+                                : Theme.of(context).colorScheme.surface,
+                          ],
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildSettingsTile(
+                            context,
+                            icon: Icons.help_outline,
+                            title: 'Help & Support',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Help & Support coming soon!'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
+                          const Divider(height: 1),
+                          _buildSettingsTile(
+                            context,
+                            icon: Icons.info_outline,
+                            title: 'About',
+                            onTap: () {
+                              showAboutDialog(
+                                context: context,
+                                applicationName: 'Qine Corner',
+                                applicationVersion: '1.0.0',
+                                applicationLegalese: ' 2025 Qine Corner',
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          const SizedBox(height: 16),
-          _buildSettingsTile(
-            context,
-            icon: Icons.favorite,
-            title: 'Favorites',
-            subtitle: 'View your favorite books',
-            onTap: () => context.push('/favorites'),
-          ),
-          _buildSettingsTile(
-            context,
-            icon: Icons.download,
-            title: 'Downloads',
-            subtitle: 'Manage your downloaded books',
-            onTap: () => context.push('/downloads'),
-          ),
-          _buildSettingsTile(
-            context,
-            icon: Icons.info,
-            title: 'About',
-            subtitle: 'Learn more about Qine Corner',
-            onTap: () {
-              showAboutDialog(
-                context: context,
-                applicationName: 'Qine Corner',
-                applicationVersion: '1.0.0',
-                applicationIcon: Image.asset(
-                  'assets/images/book.png',
-                  width: 50,
-                  height: 50,
-                ),
-                children: [
-                  const Text(
-                    'Qine Corner is a comprehensive mobile application for discovering and managing Ethiopian books with advanced library and reading features.',
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
       ),
     );
   }
@@ -83,31 +302,24 @@ class SettingsScreen extends ConsumerWidget {
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(
-        icon,
-        size: 28,
-        color: Theme.of(context).colorScheme.primary,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
-      title: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).textTheme.bodySmall?.color,
-            ),
-      ),
-      // trailing: Icon(
-      //   Icons.chevron_right,
-      //   color: Theme.of(context).textTheme.bodySmall?.color,
-      // ),
+      title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle) : null,
+      trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
   }

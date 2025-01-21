@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qine_corner/screens/home/widgets/home_content.dart';
 import '../../../core/models/book.dart';
 import '../../../core/providers/books_provider.dart';
@@ -9,55 +10,74 @@ import 'book_card.dart';
 
 class CategoryBooksList extends ConsumerWidget {
   final String categoryId;
+  final String title;
 
   const CategoryBooksList({
     super.key,
     required this.categoryId,
+    required this.title,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Initial filter on mount
-    Future.microtask(() {
-      ref.read(booksProvider.notifier).filterByCategory(categoryId);
-    });
+    return ref.watch(booksProvider).books.when(
+          data: (books) {
+            if (books.isEmpty) {
+              return const SizedBox.shrink();
+            }
 
-    // Watch for selected category changes
-    final selectedCategory = ref.watch(selectedCategoryProvider);
-
-    // Only update if the selected category is different from current
-    if (selectedCategory != categoryId) {
-      Future.microtask(() {
-        ref.read(booksProvider.notifier).filterByCategory(selectedCategory);
-      });
-    }
-
-    final booksAsync = ref.watch(booksProvider);
-
-    return booksAsync.when(
-      loading: () => const LoadingAnimation(),
-      error: (error, stack) => AnimatedErrorWidget(
-        message: 'Failed to load books for this category. Please try again.',
-        onRetry: () {
-          ref.invalidate(booksProvider);
-          ref.read(booksProvider.notifier).filterByCategory(categoryId);
-        },
-      ),
-      data: (books) {
-        if (books.isEmpty) {
-          return const Center(
-            child: Text('No books found in this category'),
-          );
-        }
-
-        return CategoryBooksListView(
-          books: books,
-          onLoadMore: () {
-            ref.read(booksProvider.notifier).loadMoreBooks();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Navigate to category view
+                        },
+                        child: const Text('See All'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 280,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: books.length,
+                    itemBuilder: (context, index) {
+                      final book = books[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: SizedBox(
+                          width: 160,
+                          child: BookCard(
+                            book: book,
+                            onTap: () =>
+                                context.push('/book/${book.id}', extra: book),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
           },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Text('Error: $error'),
+          ),
         );
-      },
-    );
   }
 }
 

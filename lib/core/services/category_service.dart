@@ -1,73 +1,92 @@
 import '../models/category.dart';
+import '../api/api_service.dart';
+import '../api/api_config.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final categoryServiceProvider =
+    Provider((ref) => CategoryService(ref.read(apiServiceProvider)));
 
 class CategoryService {
-  // Simulating backend data
-  final List<Category> _categories = [
-    Category(
-      id: '1',
-      name: 'ልቦለድ',
-      icon: '📚',
-      bookCount: 150,
-    ),
-    Category(
-      id: '2',
-      name: 'ታሪክ',
-      icon: '🏛️',
-      bookCount: 85,
-    ),
-    Category(
-      id: '3',
-      name: 'ፍቅር',
-      icon: '❤️',
-      bookCount: 120,
-    ),
-    Category(
-      id: '4',
-      name: 'ትምህርት',
-      icon: '📖',
-      bookCount: 95,
-    ),
-    Category(
-      id: '5',
-      name: 'ሃይማኖት',
-      icon: '🕌',
-      bookCount: 110,
-    ),
-    Category(
-      id: '6',
-      name: 'ልጆች',
-      icon: '👶',
-      bookCount: 75,
-    ),
-    Category(
-      id: '7',
-      name: 'ሳይንስ',
-      icon: '🔬',
-      bookCount: 60,
-    ),
-  ];
+  final ApiService _apiService;
 
-  // Simulate fetching categories from backend
+  CategoryService(this._apiService);
+
   Future<List<Category>> getCategories() async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 800));
-    return _categories;
+    try {
+      final response = await _apiService.get(ApiConfig.categories);
+      final data = ApiConfig.extractData(response);
+
+      if (data is Map && data.containsKey('categories')) {
+        final categoriesList = data['categories'] as List;
+        return categoriesList
+            .map((json) {
+              if (json is Map) {
+                // Convert to Map<String, dynamic> and ensure id is string
+                final categoryJson = Map<String, dynamic>.from(json);
+                categoryJson['id'] = categoryJson['id'].toString();
+                return Category.fromJson(categoryJson);
+              }
+              return null;
+            })
+            .whereType<Category>()
+            .toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('Error fetching categories: $e');
+      return [];
+    }
   }
 
-  // Get category by ID
   Future<Category?> getCategoryById(String id) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _categories.firstWhere(
-      (category) => category.id == id,
-      orElse: () => throw Exception('Category not found'),
-    );
+    try {
+      final response = await _apiService.get('${ApiConfig.categories}/$id');
+      final data = ApiConfig.extractData(response);
+      return Category.fromJson(data);
+    } catch (e) {
+      print('Error fetching category: $e');
+      return null;
+    }
   }
 
-  // Get popular categories (those with most books)
   Future<List<Category>> getPopularCategories({int limit = 5}) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final sorted = List<Category>.from(_categories)
-      ..sort((a, b) => b.bookCount.compareTo(a.bookCount));
-    return sorted.take(limit).toList();
+    try {
+      final queryParams = {
+        'limit': limit.toString(),
+      };
+
+      final response = await _apiService.get(
+        '${ApiConfig.categories}/popular',
+        queryParams: queryParams,
+      );
+      final data = ApiConfig.extractData(response);
+      return (data as List).map((json) => Category.fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching popular categories: $e');
+      return [];
+    }
+  }
+
+  Future<List<Category>> searchCategories(String query) async {
+    try {
+      final queryParams = {
+        'query': query,
+      };
+
+      final response = await _apiService.get(
+        '${ApiConfig.categories}/search',
+        queryParams: queryParams,
+      );
+      final data = ApiConfig.extractData(response);
+      return (data as List).map((json) => Category.fromJson(json)).toList();
+    } catch (e) {
+      print('Error searching categories: $e');
+      return [];
+    }
+  }
+
+  void clearCache() {
+    // Removed cache clearing functionality
   }
 }

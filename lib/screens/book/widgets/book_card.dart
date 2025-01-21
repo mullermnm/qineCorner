@@ -5,6 +5,7 @@ import 'package:qine_corner/core/providers/library_provider.dart';
 import 'package:qine_corner/core/models/book.dart';
 import 'package:qine_corner/core/theme/app_colors.dart';
 import 'package:qine_corner/core/theme/theme_helper.dart';
+import 'package:qine_corner/core/config/app_config.dart';
 import 'package:qine_corner/screens/library/widgets/add_to_libraries_dialog.dart';
 import '../book_detail_screen.dart';
 
@@ -86,12 +87,28 @@ class BookCard extends ConsumerWidget {
                 child: Stack(
                   children: [
                     SizedBox.expand(
-                      child: book.coverUrl != null
-                          ? Image.asset(
-                              book.coverUrl!,
+                      child: book.coverUrl != null && book.coverUrl!.isNotEmpty
+                          ? Image.network(
+                              AppConfig.getAssetUrl(book.coverUrl),
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildPlaceholder(),
+                              errorBuilder: (context, error, stackTrace) {
+                                print('Error loading image: $error');
+                                return _buildPlaceholder();
+                              },
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                .cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                );
+                              },
                             )
                           : _buildPlaceholder(),
                     ),

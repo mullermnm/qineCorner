@@ -21,6 +21,7 @@ class _ScaffoldWithBottomNavBarState extends State<ScaffoldWithBottomNavBar> {
   static const List<(String path, String label, IconData icon)> _tabs = [
     ('/home', 'Home', Icons.home_outlined),
     ('/libraries', 'Libraries', Icons.library_books_outlined),
+    ('/notes', 'Notes', Icons.note_outlined),
     ('/settings', 'Settings', Icons.settings_outlined),
   ];
 
@@ -29,6 +30,31 @@ class _ScaffoldWithBottomNavBarState extends State<ScaffoldWithBottomNavBar> {
     
     setState(() => _currentIndex = index);
     context.go(_tabs[index].$1);
+  }
+
+  int _calculateSelectedIndex(BuildContext context) {
+    final String location = GoRouterState.of(context).uri.toString();
+    if (location.startsWith('/libraries')) return 1;
+    if (location.startsWith('/notes')) return 2;
+    if (location.startsWith('/settings')) return 3;
+    return 0;
+  }
+
+  void _onItemTapped(int index, BuildContext context) {
+    switch (index) {
+      case 0:
+        context.go('/');
+        break;
+      case 1:
+        context.go('/libraries');
+        break;
+      case 2:
+        context.go('/notes');
+        break;
+      case 3:
+        context.go('/settings');
+        break;
+    }
   }
 
   @override
@@ -51,8 +77,8 @@ class _ScaffoldWithBottomNavBarState extends State<ScaffoldWithBottomNavBar> {
         child: NavigationBar(
           height: 65,
           elevation: 0,
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) => _onTap(context, index),
+          selectedIndex: _calculateSelectedIndex(context),
+          onDestinationSelected: (index) => _onItemTapped(index, context),
           backgroundColor: Colors.transparent,
           indicatorColor: isDark 
               ? AppColors.accentMint.withOpacity(0.2)

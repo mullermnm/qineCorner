@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qine_corner/common/widgets/app_text.dart';
 import '../../../core/models/book.dart';
 import '../../../core/providers/books_provider.dart';
@@ -17,29 +18,92 @@ class BooksGrid extends ConsumerWidget {
       ref.read(booksProvider.notifier).filterByCategory(null);
     });
 
-    final booksAsync = ref.watch(booksProvider);
+    final booksState = ref.watch(booksProvider);
 
-    return booksAsync.when(
-      loading: () => const LoadingAnimation(),
-      error: (error, stack) => AnimatedErrorWidget(
-        message: 'Failed to load books. Please try again.',
-        onRetry: () => ref.invalidate(booksProvider),
-      ),
+    if (booksState.books is AsyncLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return booksState.books.when(
       data: (books) {
         if (books.isEmpty) {
-          return AnimatedErrorWidget(
-            message: 'Failed to load books. Please try again.',
-            onRetry: () => ref.invalidate(booksProvider),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.library_books,
+                  size: 64,
+                  color: Theme.of(context).disabledColor,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No books available',
+                  style: TextStyle(
+                    color: Theme.of(context).disabledColor,
+                  ),
+                ),
+              ],
+            ),
           );
         }
 
-        return BooksGridWidget(
-          books: books,
-          onLoadMore: () {
-            ref.read(booksProvider.notifier).loadMoreBooks();
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return NotificationListener<ScrollNotification>(
+              onNotification: (ScrollNotification scrollInfo) {
+                if (scrollInfo.metrics.pixels ==
+                    scrollInfo.metrics.maxScrollExtent) {
+                  ref.read(booksProvider.notifier).loadMoreBooks();
+                }
+                return true;
+              },
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                physics: const BouncingScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: books.length,
+                itemBuilder: (context, index) {
+                  final book = books[index];
+                  return BookCard(
+                    book: book,
+                    onTap: () => context.push('/book/${book.id}', extra: book),
+                  );
+                },
+              ),
+            );
           },
         );
       },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error: ${error.toString()}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.read(booksProvider.notifier).refresh(),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

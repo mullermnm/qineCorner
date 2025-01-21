@@ -185,7 +185,7 @@ class BookDetailScreen extends ConsumerWidget {
                               icon: "question_mark",
                               id: categoryId,
                               name: 'Unknown Category',
-                              bookCount: 0,
+                              booksCount: 0,
                             ),
                           );
 
@@ -216,7 +216,7 @@ class BookDetailScreen extends ConsumerWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    category.icon,
+                                    category.icon ?? '',
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: isDark
@@ -295,8 +295,10 @@ class BookDetailScreen extends ConsumerWidget {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => PdfViewerScreen(
-                                          book: book,
+                                        builder: (context) => ProviderScope(
+                                          child: PdfViewerScreen(
+                                            book: book,
+                                          ),
                                         ),
                                       ),
                                     );

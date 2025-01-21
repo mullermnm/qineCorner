@@ -1,81 +1,160 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/book.dart';
 import '../services/search_service.dart';
+import '../api/api_service.dart';
 
-class BooksNotifier extends StateNotifier<AsyncValue<List<Book>>> {
-  BooksNotifier() : super(const AsyncValue.loading()) {
+final apiServiceProvider = Provider((ref) => ApiService());
+
+final searchServiceProvider =
+    Provider((ref) => SearchService(ref.read(apiServiceProvider)));
+
+class BooksState {
+  final AsyncValue<List<Book>> books;
+  final List<Book> searchResults;
+
+  const BooksState({
+    required this.books,
+    this.searchResults = const [],
+  });
+
+  BooksState copyWith({
+    AsyncValue<List<Book>>? books,
+    List<Book>? searchResults,
+  }) {
+    return BooksState(
+      books: books ?? this.books,
+      searchResults: searchResults ?? this.searchResults,
+    );
+  }
+}
+
+final booksProvider = StateNotifierProvider<BooksNotifier, BooksState>((ref) {
+  final searchService = ref.read(searchServiceProvider);
+  return BooksNotifier(searchService);
+});
+
+class BooksNotifier extends StateNotifier<BooksState> {
+  final SearchService _searchService;
+  String? _currentCategory;
+  int _currentPage = 1;
+  bool _hasMoreData = true;
+  static const int _itemsPerPage = 20;
+
+  BooksNotifier(this._searchService)
+      : super(const BooksState(books: AsyncValue.data([]))) {
     loadInitialBooks();
   }
 
-  final _searchService = SearchService();
-  static const _itemsPerPage = 8;
-  int _currentPage = 0;
-  String? _currentCategory;
-
   Future<void> loadInitialBooks() async {
-    state = const AsyncValue.loading();
+    state = state.copyWith(books: const AsyncValue.loading());
+
     try {
-      final books = await _fetchBooks(0);
-      state = AsyncValue.data(books);
+      final books = await _searchService.getPopularBooks(
+        page: _currentPage,
+        pageSize: _itemsPerPage,
+      );
+      state = state.copyWith(books: AsyncValue.data(books));
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      state = state.copyWith(books: AsyncValue.error(e, st));
     }
   }
 
   Future<void> loadMoreBooks() async {
-    if (state.isLoading || state.hasError) return;
-
-    final currentBooks = state.value ?? [];
-    _currentPage++;
+    if (state.books is AsyncLoading || !_hasMoreData) return;
 
     try {
-      final newBooks = await _fetchBooks(_currentPage);
+      final currentBooks = state.books.value ?? [];
+      _currentPage++;
+
+      final newBooks = _currentCategory == null
+          ? await _searchService.getPopularBooks(
+              page: _currentPage,
+              pageSize: _itemsPerPage,
+            )
+          : await _searchService.getBooksByCategory(
+              _currentCategory!,
+              page: _currentPage,
+              pageSize: _itemsPerPage,
+            );
+
       if (newBooks.isEmpty) {
-        _currentPage--; // Revert if no more books
+        _hasMoreData = false;
         return;
       }
-      state = AsyncValue.data([...currentBooks, ...newBooks]);
+
+      state = state.copyWith(
+        books: AsyncValue.data([...currentBooks, ...newBooks]),
+      );
     } catch (e, st) {
-      _currentPage--; // Revert page increment on error
-      state = AsyncValue.error(e, st);
+      _currentPage--;
+      state = state.copyWith(books: AsyncValue.error(e, st));
     }
   }
 
   Future<void> filterByCategory(String? category) async {
     if (_currentCategory == category) return;
 
-    _currentCategory = category;
-    _currentPage = 0;
-    await loadInitialBooks();
+    state = state.copyWith(books: const AsyncValue.loading());
+    _currentPage = 1;
+    _hasMoreData = true;
+
+    try {
+      final books = await _searchService.getBooksByCategory(
+        category ?? 'popular',
+        page: _currentPage,
+        pageSize: _itemsPerPage,
+      );
+      _currentCategory = category;
+      state = state.copyWith(books: AsyncValue.data(books));
+    } catch (e, st) {
+      state = state.copyWith(books: AsyncValue.error(e, st));
+    }
   }
 
-  Future<List<Book>> _fetchBooks(int page) async {
-    // Simulate API call with delay
-    await Future.delayed(const Duration(milliseconds: 800));
+  List<Book> getSearchResults() => state.searchResults;
 
-    final List<Book> books;
-    if (_currentCategory == null) {
-      books = await _searchService.getPopularBooks();
-    } else {
-      books = await _searchService.getBooksByCategory(_currentCategory!);
+  void searchBooks(String query) {
+    if (query.isEmpty) {
+      state = state.copyWith(searchResults: []);
+      return;
     }
 
-    // Calculate pagination slice
-    final start = page * _itemsPerPage;
-    final end = start + _itemsPerPage;
+    final books = state.books.value ?? [];
+    final lowercaseQuery = query.toLowerCase();
+    final results = books.where((book) {
+      final titleMatch = book.title.toLowerCase().contains(lowercaseQuery);
+      final authorMatch = book.author.name.toLowerCase().contains(lowercaseQuery);
+      final categoryMatch = book.categories
+          .any((category) => category.toLowerCase().contains(lowercaseQuery));
+      final descriptionMatch =
+          book.description.toLowerCase().contains(lowercaseQuery);
+      return titleMatch || authorMatch || categoryMatch || descriptionMatch;
+    }).toList();
 
-    if (start >= books.length) {
-      return [];
-    }
+    state = state.copyWith(searchResults: results);
+  }
 
-    return books.sublist(
-      start,
-      end > books.length ? books.length : end,
-    );
+  Future<void> refresh() async {
+    _currentCategory = null;
+    _currentPage = 1;
+    _hasMoreData = true;
+    await loadInitialBooks();
   }
 }
 
-final booksProvider =
-    StateNotifierProvider<BooksNotifier, AsyncValue<List<Book>>>((ref) {
-  return BooksNotifier();
+// Additional providers for specific book lists
+final recentBooksProvider = FutureProvider<List<Book>>((ref) async {
+  print('Fetching recent books from provider');
+  final searchService = ref.read(searchServiceProvider);
+  final books = await searchService.getRecentBooks();
+  print('Recent books fetched in provider: ${books.length}');
+  return books;
+});
+
+final popularBooksProvider = FutureProvider<List<Book>>((ref) async {
+  print('Fetching popular books from provider');
+  final searchService = ref.read(searchServiceProvider);
+  final books = await searchService.getPopularBooks();
+  print('Popular books fetched in provider: ${books.length}');
+  return books;
 });
