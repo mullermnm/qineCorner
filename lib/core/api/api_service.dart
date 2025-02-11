@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -187,6 +188,34 @@ class ApiService {
       return _handleResponse(response);
     } catch (e) {
       throw ApiException('Network error: $e');
+    }
+  }
+
+  Future<String> uploadMedia(String endpoint, File file) async {
+    try {
+      final uri = Uri.parse('$baseUrl/$endpoint');
+      final request = http.MultipartRequest('POST', uri)
+        ..files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            file.path,
+          ),
+        );
+
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['url'] as String;
+      }
+      throw ApiException(response.statusCode.toString());
+    } catch (e) {
+      throw ApiException('Failed to upload media: $e');
     }
   }
 }

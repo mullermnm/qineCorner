@@ -48,6 +48,9 @@ class _BookClubDetailsScreenState extends ConsumerState<BookClubDetailsScreen> {
     final club = clubAsync.value;
     final isOwner =
         club?.owner?.id == ref.watch(authNotifierProvider).value?.user?.id;
+    final isMember = club!.members.any((member) =>
+            member.id == ref.watch(authNotifierProvider).value?.user?.id) ||
+        false;
 
     return clubAsync.when(
       data: (club) {
@@ -244,7 +247,7 @@ class _BookClubDetailsScreenState extends ConsumerState<BookClubDetailsScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      if (!club.isPrivate)
+                      if (!club.isPrivate && !isOwner && !isMember)
                         Center(
                           child: ElevatedButton(
                             onPressed: _joinClub,

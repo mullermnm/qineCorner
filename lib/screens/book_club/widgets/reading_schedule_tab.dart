@@ -85,31 +85,38 @@ class ReadingScheduleTab extends ConsumerWidget {
                       Row(
                         children: [
                           Icon(
-                            isCompleted
-                                ? Icons.check_circle
-                                : Icons.schedule,
+                            isCompleted ? Icons.check_circle : Icons.schedule,
                             color: isCompleted
                                 ? Colors.green
                                 : Theme.of(context).colorScheme.primary,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            isCompleted ? 'Completed' : 'In Progress',
-                            style: TextStyle(
-                              color: isCompleted
-                                  ? Colors.green
-                                  : Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              isCompleted ? 'Completed' : 'In Progress',
+                              style: TextStyle(
+                                color: isCompleted
+                                    ? Colors.green
+                                    : Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           const Spacer(),
-                          Text(
-                            'Chapters: ${schedule.chapters.join(", ")}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : AppColors.lightTextSecondary,
-                                ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'Chapters: ${schedule.chapters.join(", ")}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.lightTextSecondary,
+                                  ),
+                            ),
                           ),
                         ],
                       ),
@@ -126,11 +133,12 @@ class ReadingScheduleTab extends ConsumerWidget {
                           const SizedBox(width: 8),
                           Text(
                             '${_formatDate(schedule.startDate)} - ${_formatDate(schedule.endDate)}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : AppColors.lightTextSecondary,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.lightTextSecondary,
+                                    ),
                           ),
                         ],
                       ),

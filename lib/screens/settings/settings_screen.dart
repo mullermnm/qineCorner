@@ -12,275 +12,276 @@ class SettingsScreen extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final user = authState.when(
-      data: (state) => state?.user,
-      loading: () => null,
-      error: (_, __) => null,
-    );
-
-    if (user == null) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 50,
-            floating: false,
-            pinned: true,
-            title: const Text('Settings'),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.secondary,
-                    ],
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
+      body: authState.when(
+        data: (auth) => CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 50,
+              floating: false,
+              pinned: true,
+              title: const Text('Settings'),
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.secondary,
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionTitle(context, 'Account'),
-                  Card(
-                    elevation: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            isDark
-                                ? Colors.grey[900]!
-                                : Theme.of(context).colorScheme.surface,
-                            isDark
-                                ? Colors.grey[850]!
-                                : Theme.of(context).colorScheme.surface,
-                          ],
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle(context, 'Account'),
+                    Card(
+                      elevation: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              isDark
+                                  ? Colors.grey[900]!
+                                  : Theme.of(context).colorScheme.surface,
+                              isDark
+                                  ? Colors.grey[850]!
+                                  : Theme.of(context).colorScheme.surface,
+                            ],
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        children: [
-                          if (user != null)
-                            ListTile(
-                              leading: Hero(
-                                tag: 'profile-photo',
-                                child: CircleAvatar(
+                        child: Column(
+                          children: [
+                            if (auth?.user != null)
+                              ListTile(
+                                leading: Hero(
+                                  tag: 'profile-photo',
+                                  child: CircleAvatar(
+                                    backgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.1),
+                                    backgroundImage: auth!.user?.profileImage !=
+                                            null
+                                        ? NetworkImage(auth.user!.profileImage!)
+                                        : null,
+                                    child: auth.user?.profileImage == null
+                                        ? Icon(
+                                            Icons.person,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                                title: Text(auth!.user!.name),
+                                subtitle: Text(auth!.user!.phone),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => context.push('/profile'),
+                              )
+                            else
+                              ListTile(
+                                leading: CircleAvatar(
                                   backgroundColor: Theme.of(context)
                                       .colorScheme
                                       .primary
                                       .withOpacity(0.1),
-                                  backgroundImage: user.profileImage != null
-                                      ? NetworkImage(user.profileImage!)
-                                      : null,
-                                  child: user.profileImage == null
-                                      ? Icon(
-                                          Icons.person,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                        )
-                                      : null,
+                                  child: Icon(
+                                    Icons.person_outline,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                  ),
                                 ),
+                                title: const Text('Sign in'),
+                                subtitle: const Text(
+                                    'Tap to sign in or create an account'),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => context.push('/login'),
                               ),
-                              title: Text(user.name),
-                              subtitle: Text(user.phone),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.push('/profile'),
-                            )
-                          else
-                            ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.1),
-                                child: Icon(
-                                  Icons.person_outline,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                              title: const Text('Sign in'),
-                              subtitle: const Text('Tap to sign in or create an account'),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.push('/login'),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'Reading'),
+                    Card(
+                      elevation: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              isDark
+                                  ? Colors.grey[900]!
+                                  : Theme.of(context).colorScheme.surface,
+                              isDark
+                                  ? Colors.grey[850]!
+                                  : Theme.of(context).colorScheme.surface,
+                            ],
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.book,
+                              title: 'Reading Preferences',
+                              subtitle: 'Goals, notifications, and more',
+                              onTap: () {
+                                if (auth?.user == null) {
+                                  context.push('/login');
+                                  return;
+                                }
+                                context.push('/reading-preferences');
+                              },
                             ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle(context, 'Reading'),
-                  Card(
-                    elevation: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            isDark
-                                ? Colors.grey[900]!
-                                : Theme.of(context).colorScheme.surface,
-                            isDark
-                                ? Colors.grey[850]!
-                                : Theme.of(context).colorScheme.surface,
+                            const Divider(height: 1),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.download,
+                              title: 'Downloads',
+                              subtitle: 'Manage your downloaded content',
+                              onTap: () {
+                                if (auth?.user == null) {
+                                  context.push('/login');
+                                  return;
+                                }
+                                context.push('/downloads');
+                              },
+                            ),
                           ],
                         ),
                       ),
-                      child: Column(
-                        children: [
-                          _buildSettingsTile(
-                            context,
-                            icon: Icons.book,
-                            title: 'Reading Preferences',
-                            subtitle: 'Goals, notifications, and more',
-                            onTap: () {
-                              if (user == null) {
-                                context.push('/login');
-                                return;
-                              }
-                              context.push('/reading-preferences');
-                            },
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'Appearance'),
+                    Card(
+                      elevation: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              isDark
+                                  ? Colors.grey[900]!
+                                  : Theme.of(context).colorScheme.surface,
+                              isDark
+                                  ? Colors.grey[850]!
+                                  : Theme.of(context).colorScheme.surface,
+                            ],
                           ),
-                          const Divider(height: 1),
-                          _buildSettingsTile(
-                            context,
-                            icon: Icons.download,
-                            title: 'Downloads',
-                            subtitle: 'Manage your downloaded content',
-                            onTap: () {
-                              if (user == null) {
-                                context.push('/login');
-                                return;
-                              }
-                              context.push('/downloads');
-                            },
+                        ),
+                        child: SwitchListTile(
+                          secondary: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              isDark ? Icons.dark_mode : Icons.light_mode,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                           ),
-                        ],
+                          title: const Text('Dark Mode'),
+                          subtitle: Text(
+                            isDark
+                                ? 'Dark theme enabled'
+                                : 'Light theme enabled',
+                          ),
+                          value: isDark,
+                          onChanged: (value) {
+                            ref.read(themeProvider.notifier).toggleTheme();
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle(context, 'Appearance'),
-                  Card(
-                    elevation: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            isDark
-                                ? Colors.grey[900]!
-                                : Theme.of(context).colorScheme.surface,
-                            isDark
-                                ? Colors.grey[850]!
-                                : Theme.of(context).colorScheme.surface,
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'Support'),
+                    Card(
+                      elevation: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              isDark
+                                  ? Colors.grey[900]!
+                                  : Theme.of(context).colorScheme.surface,
+                              isDark
+                                  ? Colors.grey[850]!
+                                  : Theme.of(context).colorScheme.surface,
+                            ],
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.help_outline,
+                              title: 'Help & Support',
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text('Help & Support coming soon!'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                            ),
+                            const Divider(height: 1),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.info_outline,
+                              title: 'About',
+                              onTap: () {
+                                showAboutDialog(
+                                  context: context,
+                                  applicationName: 'Qine Corner',
+                                  applicationVersion: '1.0.0',
+                                  applicationLegalese: ' 2025 Qine Corner',
+                                );
+                              },
+                            ),
                           ],
                         ),
                       ),
-                      child: SwitchListTile(
-                        secondary: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            isDark ? Icons.dark_mode : Icons.light_mode,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        title: const Text('Dark Mode'),
-                        subtitle: Text(
-                          isDark ? 'Dark theme enabled' : 'Light theme enabled',
-                        ),
-                        value: isDark,
-                        onChanged: (value) {
-                          ref.read(themeProvider.notifier).toggleTheme();
-                        },
-                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle(context, 'Support'),
-                  Card(
-                    elevation: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            isDark
-                                ? Colors.grey[900]!
-                                : Theme.of(context).colorScheme.surface,
-                            isDark
-                                ? Colors.grey[850]!
-                                : Theme.of(context).colorScheme.surface,
-                          ],
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildSettingsTile(
-                            context,
-                            icon: Icons.help_outline,
-                            title: 'Help & Support',
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Help & Support coming soon!'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                          ),
-                          const Divider(height: 1),
-                          _buildSettingsTile(
-                            context,
-                            icon: Icons.info_outline,
-                            title: 'About',
-                            onTap: () {
-                              showAboutDialog(
-                                context: context,
-                                applicationName: 'Qine Corner',
-                                applicationVersion: '1.0.0',
-                                applicationLegalese: ' 2025 Qine Corner',
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Text('Error: $error'),
+        ),
       ),
     );
   }

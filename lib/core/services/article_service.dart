@@ -1,80 +1,122 @@
+import 'dart:io';
+import 'package:qine_corner/core/api/api_service.dart';
 import 'package:qine_corner/core/models/article.dart';
-import 'package:qine_corner/core/services/api_service.dart';
 
 class ArticleService {
-  final ApiService _api;
+  final ApiService _apiService;
 
-  ArticleService(this._api);
+  ArticleService(this._apiService);
+
+  Future<List<Article>> getArticles(
+      {String? authorId,
+      String? category,
+      String? status,
+      String? articleId,
+      String? searchQuery}) async {
+    try {
+      final queryParams = {
+        if (authorId != null) 'authorId': authorId,
+        if (category != null) 'category': category,
+        if (status != null) 'status': status,
+        if (articleId != null) 'articleId': articleId,
+        if (searchQuery != null) 'search': searchQuery,
+      };
+      final endpoint = '/articles${_buildQueryString(queryParams)}';
+      final response = await _apiService.get(endpoint);
+      print('Article response: $response');
+
+      final articles = response['articles'] as List;
+      return articles
+          .map((json) => Article.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Error fetching articles: $e');
+      return [];
+    }
+  }
 
   Future<List<Article>> getFeaturedArticles() async {
-    final response = await _api.get('/articles/featured');
-    return (response['data'] as List)
-        .map((json) => Article.fromJson(json))
-        .toList();
+    try {
+      final response = await _apiService.get('/articles/featured');
+      final dynamic articles = response['articles'] ?? response['data'] ?? [];
+      if (articles is List) {
+        return articles
+            .map((json) => Article.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 
-  Future<List<Article>> getArticles({
-    String? category,
-    String? query,
-    int page = 1,
-    int limit = 10,
-  }) async {
-    final queryParams = {
-      if (category != null) 'category': category,
-      if (query != null) 'q': query,
-      'page': page.toString(),
-      'limit': limit.toString(),
-    };
-
-    final response = await _api.get('/articles?${Uri(queryParameters: queryParams)}');
-    return (response['data'] as List)
-        .map((json) => Article.fromJson(json))
-        .toList();
+  Future<Article?> getArticleDetails(String id) async {
+    try {
+      final response = await _apiService.get('/articles/$id');
+      final dynamic article = response['article'] ?? response['data'];
+      if (article != null) {
+        return Article.fromJson(article as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  Future<Article> getArticleDetails(String articleId) async {
-    final response = await _api.get('/articles/$articleId');
-    return Article.fromJson(response['data']);
+  Future<Article> createArticle(Article article) async {
+    final response =
+        await _apiService.post('/articles', body: article.toJson());
+    return Article.fromJson(response['article'] ?? response['data']);
   }
 
-  Future<Article> createArticle(Map<String, dynamic> articleData) async {
-    final response = await _api.post('/articles', articleData);
-    return Article.fromJson(response['data']);
+  Future<Article> updateArticle(String id, Article article) async {
+    final response =
+        await _apiService.put('/articles/$id', body: article.toJson());
+    return Article.fromJson(response['article'] ?? response['data']);
   }
 
-  Future<Article> updateArticle(
-    String articleId,
-    Map<String, dynamic> updates,
-  ) async {
-    final response = await _api.put('/articles/$articleId', updates);
-    return Article.fromJson(response['data']);
+  Future<void> deleteArticle(String id) async {
+    await _apiService.delete('/articles/$id');
   }
 
-  Future<void> deleteArticle(String articleId) async {
-    await _api.delete('/articles/$articleId');
+  Future<String> uploadMedia(File file) async {
+    return await _apiService.uploadMedia('articles/media', file);
   }
 
-  Future<void> likeArticle(String articleId) async {
-    await _api.post('/articles/$articleId/like', {});
+  Future<void> publishDraft(String id) async {
+    await _apiService.post('/articles/$id/publish');
   }
 
-  Future<void> unlikeArticle(String articleId) async {
-    await _api.delete('/articles/$articleId/like');
+  Future<void> moveToDraft(String id) async {
+    await _apiService.post('/articles/$id/draft');
   }
 
-  Future<void> addComment(String articleId, String content) async {
-    await _api.post('/articles/$articleId/comments', {'content': content});
+  Future<void> likeArticle(String id) async {
+    await _apiService.post('/articles/$id/like');
   }
 
-  Future<void> deleteComment(String articleId, String commentId) async {
-    await _api.delete('/articles/$articleId/comments/$commentId');
+  Future<void> unlikeArticle(String id) async {
+    await _apiService.delete('/articles/$id/like');
   }
 
-  Future<void> saveArticle(String articleId) async {
-    await _api.post('/articles/$articleId/save', {});
+  Future<void> saveArticle(String id) async {
+    await _apiService.post('/articles/$id/save');
   }
 
-  Future<void> unsaveArticle(String articleId) async {
-    await _api.delete('/articles/$articleId/save');
+  Future<void> unsaveArticle(String id) async {
+    await _apiService.delete('/articles/$id/save');
+  }
+
+  Future<void> shareArticle(String id) async {
+    await _apiService.post('/articles/$id/share');
+  }
+
+  Future<void> viewArticle(String id) async {
+    await _apiService.post('/articles/$id/view');
+  }
+
+  String _buildQueryString(Map<String, String> params) {
+    if (params.isEmpty) return '';
+    return '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
   }
 }

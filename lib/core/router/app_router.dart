@@ -7,6 +7,9 @@ import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/core/providers/reading_goal_provider.dart';
 import 'package:qine_corner/screens/articles/articles_screen.dart';
 import 'package:qine_corner/screens/articles/create_article_screen.dart';
+import 'package:qine_corner/screens/articles/article_detail_screen.dart';
+import 'package:qine_corner/screens/articles/article_editor_screen.dart';
+import 'package:qine_corner/screens/articles/my_articles_screen.dart';
 import 'package:qine_corner/screens/auth/forgot_password_screen.dart';
 import 'package:qine_corner/screens/auth/verify_otp_screen.dart';
 import 'package:qine_corner/screens/book/book_detail_screen.dart';
@@ -269,6 +272,28 @@ class AppRouter {
             GoRoute(
               path: '/articles',
               builder: (context, state) => const ArticlesScreen(),
+              routes: [
+                GoRoute(
+                  path: 'my',
+                  builder: (context, state) => const MyArticlesScreen(),
+                ),
+                GoRoute(
+                  path: 'new',
+                  builder: (context, state) => const ArticleEditorScreen(),
+                ),
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) => ArticleDetailScreen(
+                    articleId: state.pathParameters['id']!,
+                  ),
+                ),
+                GoRoute(
+                  path: ':id/edit',
+                  builder: (context, state) => ArticleEditorScreen(
+                    articleId: state.pathParameters['id'],
+                  ),
+                ),
+              ],
             ),
             GoRoute(
               path: '/articles/create',

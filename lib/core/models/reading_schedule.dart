@@ -30,7 +30,7 @@ class ReadingSchedule {
       startDate: DateTime.parse(json['start_date'] as String),
       endDate: DateTime.parse(json['end_date'] as String),
       chapters: (json['chapters'] as List).cast<String>(),
-      notes: json['notes'] as String,
+      notes: json['notes'] as String?,
       creator: User.fromJson(json['creator'] as Map<String, dynamic>),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),

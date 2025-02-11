@@ -22,7 +22,8 @@ final readingScheduleProvider = StateNotifierProvider.family<
   return ReadingScheduleNotifier(ref.read(readingScheduleServiceProvider), ref);
 });
 
-class ReadingScheduleNotifier extends StateNotifier<AsyncValue<ReadingSchedule?>> {
+class ReadingScheduleNotifier
+    extends StateNotifier<AsyncValue<ReadingSchedule?>> {
   final ReadingScheduleService _service;
   final Ref _ref;
 
@@ -43,7 +44,7 @@ class ReadingScheduleNotifier extends StateNotifier<AsyncValue<ReadingSchedule?>
         startDate: startDate,
         endDate: endDate,
         chapters: chapters,
-        notes: notes,
+        notes: notes ?? '',
       );
       state = AsyncValue.data(schedule);
       // Invalidate the schedules list to trigger a refresh

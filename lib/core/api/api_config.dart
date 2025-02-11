@@ -1,7 +1,7 @@
 class ApiConfig {
   // Use your PC's IP address instead of localhost when testing on mobile
   static const String baseUrl =
-      'http://192.168.1.4:8000/api/v1'; // Update this with your PC's IP address
+      'http://192.168.137.61:8000/api/v1'; // Update this with your PC's IP address
 
   // Auth endpoints
   static const String register = '/auth/register';
