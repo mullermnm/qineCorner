@@ -14,286 +14,229 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(
+          'Solo Reader',
+          style: TextStyle(
+            color: Theme.of(context).primaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: authState.when(
-        data: (auth) => CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              expandedHeight: 50,
-              floating: false,
-              pinned: true,
-              title: const Text('Settings'),
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
+        data: (auth) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Premium Card
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
                     gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                       colors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.secondary,
+                        Theme.of(context).primaryColor.withOpacity(0.8),
+                        Theme.of(context).primaryColor,
                       ],
                     ),
                   ),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle(context, 'Account'),
-                    Card(
-                      elevation: 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              isDark
-                                  ? Colors.grey[900]!
-                                  : Theme.of(context).colorScheme.surface,
-                              isDark
-                                  ? Colors.grey[850]!
-                                  : Theme.of(context).colorScheme.surface,
-                            ],
+                      Row(
+                        children: [
+                          const Text(
+                            'Upgrade to Premium',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.star_rounded,
+                            color: Colors.amber[300],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Enjoy an Ad-Free Experience – Upgrade to Premium for Seamless Browsing',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 13,
                         ),
-                        child: Column(
-                          children: [
-                            if (auth?.user != null)
-                              ListTile(
-                                leading: Hero(
-                                  tag: 'profile-photo',
-                                  child: CircleAvatar(
-                                    backgroundColor: Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withOpacity(0.1),
-                                    backgroundImage: auth!.user?.profileImage !=
-                                            null
-                                        ? NetworkImage(auth.user!.profileImage!)
-                                        : null,
-                                    child: auth.user?.profileImage == null
-                                        ? Icon(
-                                            Icons.person,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                                title: Text(auth!.user!.name),
-                                subtitle: Text(auth!.user!.phone),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () => context.push('/profile'),
-                              )
-                            else
-                              ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.1),
-                                  child: Icon(
-                                    Icons.person_outline,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                                title: const Text('Sign in'),
-                                subtitle: const Text(
-                                    'Tap to sign in or create an account'),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () => context.push('/login'),
                               ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    _buildSectionTitle(context, 'Reading'),
-                    Card(
-                      elevation: 2,
-                      child: Container(
+
+              // Remove Ads Section
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              isDark
-                                  ? Colors.grey[900]!
-                                  : Theme.of(context).colorScheme.surface,
-                              isDark
-                                  ? Colors.grey[850]!
-                                  : Theme.of(context).colorScheme.surface,
-                            ],
-                          ),
-                        ),
-                        child: Column(
-                          children: [
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.block, color: Colors.red),
+                ),
+                title: const Text('Remove Ads Only'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  // Handle remove ads
+                },
+              ),
+              const Divider(),
+
+              // Account & Content Section
+              _buildSectionTitle(context, 'Account & Content'),
+              if (auth?.user != null)
+                _buildSettingsTile(
+                  context,
+                  icon: Icons.person,
+                  title: auth!.user!.name,
+                  subtitle: auth.user!.phone,
+                  onTap: () => context.push('/profile'),
+                ),
+              _buildSettingsTile(
+                context,
+                icon: Icons.book_outlined,
+                title: 'My Book Requests',
+                onTap: () => context.push('/my-requests'),
+              ),
+              _buildSettingsTile(
+                context,
+                icon: Icons.language,
+                title: 'Language',
+                onTap: () {
+                  // Handle language selection
+                },
+              ),
+
+              // Preferences Section
+              _buildSectionTitle(context, 'Preferences'),
                             _buildSettingsTile(
                               context,
-                              icon: Icons.book,
+                icon: Icons.book_outlined,
                               title: 'Reading Preferences',
-                              subtitle: 'Goals, notifications, and more',
                               onTap: () {
-                                if (auth?.user == null) {
-                                  context.push('/login');
-                                  return;
-                                }
                                 context.push('/reading-preferences');
                               },
                             ),
-                            const Divider(height: 1),
                             _buildSettingsTile(
                               context,
-                              icon: Icons.download,
-                              title: 'Downloads',
-                              subtitle: 'Manage your downloaded content',
+                icon: Icons.privacy_tip_outlined,
+                title: 'Terms & Privacy',
                               onTap: () {
-                                if (auth?.user == null) {
-                                  context.push('/login');
-                                  return;
-                                }
-                                context.push('/downloads');
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle(context, 'Appearance'),
-                    Card(
-                      elevation: 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              isDark
-                                  ? Colors.grey[900]!
-                                  : Theme.of(context).colorScheme.surface,
-                              isDark
-                                  ? Colors.grey[850]!
-                                  : Theme.of(context).colorScheme.surface,
-                            ],
-                          ),
-                        ),
-                        child: SwitchListTile(
+                  // Handle terms of services
+                },
+              ),
+              _buildSettingsTile(
+                context,
+                icon: Icons.info_outline,
+                title: 'About App',
+                onTap: () {
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'Qine Corner',
+                    applicationVersion: '1.0.0',
+                    applicationLegalese: '© 2025 Qine Corner',
+                  );
+                },
+              ),
+
+              // Social Section
+              _buildSectionTitle(context, 'Social'),
+              _buildSettingsTile(
+                context,
+                icon: Icons.star_outline,
+                title: 'Rate Us',
+                onTap: () {
+                  // Handle rate us
+                },
+              ),
+              _buildSettingsTile(
+                context,
+                icon: Icons.share_outlined,
+                title: 'Share with Friends',
+                onTap: () {
+                  // Handle share
+                },
+              ),
+              _buildSettingsTile(
+                context,
+                icon: Icons.apps_outlined,
+                title: 'More Apps',
+                onTap: () {
+                  // Handle more apps
+                },
+              ),
+
+              // Theme Toggle
+              SwitchListTile(
                           secondary: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.1),
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
                               isDark ? Icons.dark_mode : Icons.light_mode,
-                              color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).primaryColor,
                             ),
                           ),
                           title: const Text('Dark Mode'),
-                          subtitle: Text(
-                            isDark
-                                ? 'Dark theme enabled'
-                                : 'Light theme enabled',
-                          ),
                           value: isDark,
                           onChanged: (value) {
                             ref.read(themeProvider.notifier).toggleTheme();
                           },
                         ),
-                      ),
+
+              // Restore Purchase Button
+              const SizedBox(height: 24),
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    // Handle restore purchase
+                  },
+                  child: Text(
+                    'Restore Purchase',
+                    style: TextStyle(
+                      color: Theme.of(context).primaryColor.withOpacity(0.7),
                     ),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle(context, 'Support'),
-                    Card(
-                      elevation: 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              isDark
-                                  ? Colors.grey[900]!
-                                  : Theme.of(context).colorScheme.surface,
-                              isDark
-                                  ? Colors.grey[850]!
-                                  : Theme.of(context).colorScheme.surface,
-                            ],
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            _buildSettingsTile(
-                              context,
-                              icon: Icons.help_outline,
-                              title: 'Help & Support',
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content:
-                                        Text('Help & Support coming soon!'),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              },
-                            ),
-                            const Divider(height: 1),
-                            _buildSettingsTile(
-                              context,
-                              icon: Icons.info_outline,
-                              title: 'About',
-                              onTap: () {
-                                showAboutDialog(
-                                  context: context,
-                                  applicationName: 'Qine Corner',
-                                  applicationVersion: '1.0.0',
-                                  applicationLegalese: ' 2025 Qine Corner',
-                                );
-                              },
-                            ),
-                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Error: $error'),
-        ),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }
 
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
+        style: TextStyle(
+          color: Theme.of(context).primaryColor,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
             ),
       ),
     );
@@ -310,17 +253,17 @@ class SettingsScreen extends ConsumerWidget {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).primaryColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           icon,
-          color: Theme.of(context).colorScheme.primary,
+          color: Theme.of(context).primaryColor,
         ),
       ),
       title: Text(title),
       subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: const Icon(Icons.chevron_right),
+      trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: onTap,
     );
   }

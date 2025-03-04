@@ -1,16 +1,20 @@
 class Author {
   final String id;
   final String name;
+  final String? email;
   final String? bio;
   final String? imageUrl;
+  final int? booksCount;
   final DateTime? birthDate;
   final List<String> genres;
 
   const Author({
     required this.id,
     required this.name,
+    this.email,
     this.bio,
     this.imageUrl,
+    this.booksCount,
     this.birthDate,
     this.genres = const [],
   });
@@ -18,10 +22,12 @@ class Author {
   // Add fromJson constructor for future API integration
   factory Author.fromJson(Map<String, dynamic> json) {
     return Author(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       name: json['name'] as String,
+      email: json['email'] as String?,
       bio: json['bio'] as String?,
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: json['image_url'] as String?,
+      booksCount: json['books_count'] as int?,
       birthDate: json['birthDate'] != null
           ? DateTime.parse(json['birthDate'] as String)
           : null,
@@ -36,8 +42,10 @@ class Author {
     return {
       'id': id,
       'name': name,
+      'email': email,
       'bio': bio,
-      'imageUrl': imageUrl,
+      'image_url': imageUrl,
+      'books_count': booksCount,
       'birthDate': birthDate?.toIso8601String(),
       'genres': genres,
     };
@@ -47,16 +55,20 @@ class Author {
   Author copyWith({
     String? id,
     String? name,
+    String? email,
     String? bio,
     String? imageUrl,
+    int? booksCount,
     DateTime? birthDate,
     List<String>? genres,
   }) {
     return Author(
       id: id ?? this.id,
       name: name ?? this.name,
+      email: email ?? this.email,
       bio: bio ?? this.bio,
       imageUrl: imageUrl ?? this.imageUrl,
+      booksCount: booksCount ?? this.booksCount,
       birthDate: birthDate ?? this.birthDate,
       genres: genres ?? this.genres,
     );

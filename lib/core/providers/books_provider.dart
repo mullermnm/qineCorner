@@ -2,11 +2,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/book.dart';
 import '../services/search_service.dart';
 import '../api/api_service.dart';
+import 'package:flutter/foundation.dart';
+import '../services/book_service.dart';
 
 final apiServiceProvider = Provider((ref) => ApiService());
 
 final searchServiceProvider =
     Provider((ref) => SearchService(ref.read(apiServiceProvider)));
+
+final bookServiceProvider = 
+    Provider((ref) => BookService(ref.read(apiServiceProvider)));
 
 class BooksState {
   final AsyncValue<List<Book>> books;
@@ -30,17 +35,19 @@ class BooksState {
 
 final booksProvider = StateNotifierProvider<BooksNotifier, BooksState>((ref) {
   final searchService = ref.read(searchServiceProvider);
-  return BooksNotifier(searchService);
+  final bookService = ref.read(bookServiceProvider);
+  return BooksNotifier(searchService, bookService);
 });
 
 class BooksNotifier extends StateNotifier<BooksState> {
   final SearchService _searchService;
+  final BookService _bookService;
   String? _currentCategory;
   int _currentPage = 1;
   bool _hasMoreData = true;
   static const int _itemsPerPage = 20;
 
-  BooksNotifier(this._searchService)
+  BooksNotifier(this._searchService, this._bookService)
       : super(const BooksState(books: AsyncValue.data([]))) {
     loadInitialBooks();
   }
@@ -139,6 +146,32 @@ class BooksNotifier extends StateNotifier<BooksState> {
     _currentPage = 1;
     _hasMoreData = true;
     await loadInitialBooks();
+  }
+
+  Future<void> uploadBook({
+    required String title,
+    required String author,
+    required String category,
+    required String description,
+    required String publishedYear,
+    required String coverImagePath,
+    required String bookFilePath,
+  }) async {
+    try {
+      final publishedAt = DateTime.parse(publishedYear);
+      await _bookService.uploadBook(
+        title: title,
+        author: author,
+        category: category,
+        description: description,
+        published_at: publishedAt,
+        coverImagePath: coverImagePath,
+        bookFilePath: bookFilePath,
+      );
+      await refresh(); // Refresh the books list after successful upload
+    } catch (e) {
+      throw Exception('Failed to upload book: $e');
+    }
   }
 }
 

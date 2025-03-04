@@ -12,8 +12,10 @@ import 'package:qine_corner/screens/articles/article_editor_screen.dart';
 import 'package:qine_corner/screens/articles/my_articles_screen.dart';
 import 'package:qine_corner/screens/auth/forgot_password_screen.dart';
 import 'package:qine_corner/screens/auth/verify_otp_screen.dart';
+import 'package:qine_corner/screens/author/upload/upload_author.dart';
 import 'package:qine_corner/screens/book/book_detail_screen.dart';
 import 'package:qine_corner/screens/book/book_request_screen.dart';
+import 'package:qine_corner/screens/book/upload/upload_book.dart';
 import 'package:qine_corner/screens/book_club/book_club_details_screen.dart';
 import 'package:qine_corner/screens/book_club/book_club_screen.dart';
 import 'package:qine_corner/screens/book_club/create_book_club_screen.dart';
@@ -39,6 +41,7 @@ import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/register_screen.dart';
 import '../../screens/auth/verification_screen.dart';
 import '../../common/widgets/bottom_navigation/custom_buttom_navigation.dart';
+import '../../screens/book/user_book_requests_screen.dart';
 
 class AppRouter {
   static final _rootNavigatorKey =
@@ -110,6 +113,7 @@ class AppRouter {
                       '/book-clubs/:id/discussions/create',
                       'book-clubs/:id/schedules/create',
                       '/articles/create',
+                      '/upload-book',
                     ].any((path) => currentPath.startsWith(path));
 
                     if (authState == null) {
@@ -298,6 +302,18 @@ class AppRouter {
             GoRoute(
               path: '/articles/create',
               builder: (context, state) => const CreateArticleScreen(),
+            ),
+            GoRoute(
+              path: '/upload-book',
+              builder: (context, state) => const UploadBook(),
+            ),
+            GoRoute(
+              path: '/upload-author',
+              builder: (context, state) => const UploadAuthor(),
+            ),
+            GoRoute(
+              path: '/my-requests',
+              builder: (context, state) => const UserBookRequestsScreen(),
             ),
           ],
         ),

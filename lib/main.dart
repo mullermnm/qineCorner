@@ -16,6 +16,7 @@ import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/core/router/app_router.dart';
 import 'package:qine_corner/core/services/search_service.dart';
 import 'package:qine_corner/core/theme/theme_provider.dart' as themeProvider;
+import 'package:qine_corner/core/services/book_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,15 +24,16 @@ void main() async {
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
 
-  // Create search service
+  // Create services
   final searchService = SearchService(ApiService());
+  final bookService = BookService(ApiService());
 
   // Create notifier instances
   final libraryNotifier = libraryProvider.LibraryNotifier(prefs);
   await libraryNotifier.loadInitialData();
   final readingGoalNotifier = readingGoalProvider.ReadingGoalNotifier(prefs);
   final readingStreakNotifier = streakProvider.ReadingStreakNotifier(prefs);
-  final booksNotifier = BooksNotifier(searchService);
+  final booksNotifier = BooksNotifier(searchService, bookService);
   final themeNotifier = themeProvider.ThemeNotifier();
   final favoriteNotifier = FavoriteNotifier(prefs);
 

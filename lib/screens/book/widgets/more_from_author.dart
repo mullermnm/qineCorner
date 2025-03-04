@@ -19,7 +19,7 @@ class MoreFromAuthor extends ConsumerWidget {
     final apiService = ref.read(apiServiceProvider);
     final searchService = SearchService(apiService);
     final authorBooks = searchService.getBooksByAuthor(
-      currentBook.author.id,
+      currentBook.author.id.toString(),
       excludeBookId: currentBook.id,
     );
 

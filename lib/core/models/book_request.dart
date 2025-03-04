@@ -1,28 +1,28 @@
 class BookRequest {
-  final String? id;
+  final String id;
   final String userId;
   final String title;
-  final String? authorName;
-  final DateTime requestDate;
-  final String status; // pending, approved, rejected
+  final String? author;
+  final String status;
+  final DateTime createdAt;
 
   BookRequest({
-    this.id,
+    required this.id,
     required this.userId,
     required this.title,
-    this.authorName,
-    required this.requestDate,
+    this.author,
     required this.status,
+    required this.createdAt,
   });
 
   factory BookRequest.fromJson(Map<String, dynamic> json) {
     return BookRequest(
-      id: json['id'] as String?,
-      userId: json['userId'] as String,
-      title: json['title'] as String,
-      authorName: json['authorName'] as String?,
-      requestDate: DateTime.parse(json['requestDate'] as String),
-      status: json['status'] as String,
+      id: json['id'].toString(),
+      userId: json['user_id'].toString(),
+      title: json['title'],
+      author: json['author'],
+      status: json['status'] ?? 'pending',
+      createdAt: DateTime.parse(json['created_at']),
     );
   }
 
@@ -31,9 +31,9 @@ class BookRequest {
       'id': id,
       'userId': userId,
       'title': title,
-      'authorName': authorName,
-      'requestDate': requestDate.toIso8601String(),
+      'author': author,
       'status': status,
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 }

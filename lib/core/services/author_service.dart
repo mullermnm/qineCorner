@@ -62,6 +62,31 @@ class AuthorService {
     }
   }
 
+  Future<Map<String, dynamic>> uploadAuthor({
+    required String name,
+    String? biography,
+    String? photoPath,
+    String? birthDate,
+  }) async {
+    try {
+      return await _apiService.postMultipart(
+        '${ApiConfig.authors}/add',
+        fields: {
+          'name': name,
+          'bio': biography ?? '',
+          'birth_date': birthDate ?? '',
+        },
+        files: photoPath != null ? {
+          'image': photoPath,
+        } : {},
+      );
+    } catch (e) {
+      print('Error uploading author: $e');
+      throw Exception('Error uploading author: $e');
+    }
+  }
+
+
   void clearCache() {
     // This method is not implemented as caching is removed
   }

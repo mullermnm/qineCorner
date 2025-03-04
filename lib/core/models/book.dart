@@ -25,17 +25,35 @@ class Book {
 
   // Add fromJson constructor for future API integration
   factory Book.fromJson(Map<String, dynamic> json) {
-    return Book(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      author: Author.fromJson(json['author'] as Map<String, dynamic>),
-      description: json['description'] as String,
-      coverUrl: json['cover_url'] as String,  // Changed from coverUrl to cover_url
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,  // Handle null rating
-      categories: List<String>.from(json['categories'] as List),
-      publishedAt: DateTime.parse(json['published_at'] as String),  // Changed from publishedAt to published_at
-      filePath: json['file_path'] as String,  // Changed from filePath to file_path
-    );
+    try {
+      // Handle categories that might be integers, strings, or null
+      List<String> parseCategories(dynamic categories) {
+        if (categories == null) return [];
+        if (categories is List) {
+          return categories.map((category) => category?.toString() ?? '').where((id) => id.isNotEmpty).toList();
+        }
+        return [];
+      }
+
+      return Book(
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+        author: Author.fromJson(json['author'] as Map<String, dynamic>),
+        description: json['description']?.toString() ?? '',
+        coverUrl: json['cover_url']?.toString() ?? '',
+        rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+        categories: parseCategories(json['categories']),
+        publishedAt: json['published_at'] != null 
+            ? DateTime.parse(json['published_at'] as String)
+            : DateTime.now(),
+        filePath: json['file_path']?.toString() ?? '',
+      );
+    } catch (e, stack) {
+      print('Error parsing Book JSON: $e');
+      print('Stack trace: $stack');
+      print('Problematic JSON: $json');
+      rethrow;
+    }
   }
 
   // Add toJson method for future API integration

@@ -10,100 +10,105 @@ class ReadingPreferencesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final AuthState = ref.watch(authNotifierProvider);
-    final user = AuthState.when(
-      data: (state) => state?.user,
-      loading: () => null,
-      error: (_, __) => null,
-    );
+    final authState = ref.watch(authNotifierProvider);
+    final user = authState.whenOrNull(data: (state) => state?.user);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reading Preferences'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: ListView(
+      body: SingleChildScrollView(
+        child: Column(
         children: [
-          if (user != null) ...[
+            if (user != null)
             Container(
-              padding: const EdgeInsets.all(24),
+                width: double.infinity,
+                margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                   colors: [
-                    Theme.of(context).colorScheme.secondary,
-                    Theme.of(context).colorScheme.tertiary,
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).shadowColor.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).primaryColor.withOpacity(0.8),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -20,
+                      top: -20,
+                      child: Icon(
+                        Icons.book_rounded,
+                        size: 150,
+                        color: Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
                 children: [
                   Hero(
                     tag: 'profile-avatar',
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.onSecondary.withOpacity(0.5),
-                          width: 2,
-                        ),
-                      ),
                       child: CircleAvatar(
-                        radius: 45,
-                        backgroundColor: Theme.of(context).colorScheme.surface,
+                              radius: 30,
+                              backgroundColor: Colors.white,
                         child: Text(
                           user.name[0].toUpperCase(),
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.secondary,
+                                style: TextStyle(
+                                  color: Theme.of(context).primaryColor,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                   Text(
                     user.name,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSecondary,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   Text(
                     user.phone,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSecondary.withOpacity(0.8),
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                         ),
                   ),
                 ],
               ),
             ),
           ],
+                ),
+              ),
+
+            // Reading Goals Section
           Padding(
-            padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionTitle(context, 'Reading Goals'),
                 Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  elevation: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
-                          Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
-                        ],
+                      side: BorderSide(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                       ),
                     ),
                     child: ListTile(
@@ -111,145 +116,132 @@ class ReadingPreferencesScreen extends ConsumerWidget {
                       leading: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          color: Theme.of(context).primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           Icons.track_changes,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: Theme.of(context).primaryColor,
                         ),
                       ),
                       title: const Text('Set Reading Goals'),
                       subtitle: const Text('Track your reading progress'),
                       trailing: Icon(
                         Icons.chevron_right,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).primaryColor,
                       ),
                       onTap: () => context.push('/goal-setup'),
                     ),
                   ),
-                ),
+
                 const SizedBox(height: 24),
                 _buildSectionTitle(context, 'Notifications'),
                 Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  elevation: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
-                          Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.2),
-                        ],
+                      side: BorderSide(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                       ),
                     ),
                     child: Column(
                       children: [
-                        SwitchListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          title: const Text('Reading Reminders'),
-                          subtitle: const Text('Daily reminders to read'),
-                          value: true, // TODO: Connect to actual preference
+                        _buildSwitchTile(
+                          context,
+                          title: 'Reading Reminders',
+                          subtitle: 'Daily reminders to read',
+                          icon: Icons.notifications_active,
+                          value: true,
                           onChanged: (value) {
                             // TODO: Implement notification toggle
                           },
-                          secondary: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.notifications_active,
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
-                          ),
                         ),
-                        const Divider(height: 1),
-                        SwitchListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          title: const Text('Book Club Updates'),
-                          subtitle: const Text('Updates from your book clubs'),
-                          value: true, // TODO: Connect to actual preference
+                        Divider(
+                          height: 1,
+                          color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        ),
+                        _buildSwitchTile(
+                          context,
+                          title: 'Book Club Updates',
+                          subtitle: 'Updates from your book clubs',
+                          icon: Icons.group,
+                          value: true,
                           onChanged: (value) {
                             // TODO: Implement notification toggle
                           },
-                          secondary: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.group,
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
-                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
+
                 const SizedBox(height: 24),
                 _buildSectionTitle(context, 'Appearance'),
                 Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  elevation: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).colorScheme.tertiaryContainer.withOpacity(0.5),
-                          Theme.of(context).colorScheme.tertiaryContainer.withOpacity(0.2),
-                        ],
+                      side: BorderSide(
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                       ),
                     ),
-                    child: SwitchListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      title: const Text('Dark Mode'),
-                      subtitle: Text(
-                        isDark ? 'Dark theme enabled' : 'Light theme enabled',
-                      ),
+                    child: _buildSwitchTile(
+                      context,
+                      title: 'Dark Mode',
+                      subtitle: isDark ? 'Dark theme enabled' : 'Light theme enabled',
+                      icon: isDark ? Icons.dark_mode : Icons.light_mode,
                       value: isDark,
                       onChanged: (value) {
                         ref.read(themeProvider.notifier).toggleTheme();
                       },
-                      secondary: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isDark ? Icons.dark_mode : Icons.light_mode,
-                          color: Theme.of(context).colorScheme.tertiary,
-                        ),
-                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 24),
               ],
             ),
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
+        style: TextStyle(
+          color: Theme.of(context).primaryColor,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SwitchListTile(
+      contentPadding: const EdgeInsets.all(16),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      value: value,
+      onChanged: onChanged,
+      secondary: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: Theme.of(context).primaryColor,
             ),
       ),
     );

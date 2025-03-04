@@ -49,7 +49,7 @@ class SliverSearchAppBar extends SliverPersistentHeaderDelegate {
               child: Row(children: [
                 IconButton(
                     onPressed: () {
-                      context.go('/book-clubs');
+                      context.go('/upload-book');
                     },
                     icon: Icon(Icons.local_library)),
                 IconButton(

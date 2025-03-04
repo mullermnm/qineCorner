@@ -44,13 +44,12 @@ class _BookRequestScreenState extends ConsumerState<BookRequestScreen> {
 
     try {
       final authState = ref.read(authNotifierProvider);
-      final state = authState.when(
-        data: (state) => state,
-        loading: () => null,
-        error: (_, __) => null,
+      
+      final userId = authState.whenOrNull(
+        data: (state) => state?.userId,
       );
 
-      if (state == null || !state.token.isNotEmpty) {
+      if (userId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please login to request books')),
@@ -59,24 +58,37 @@ class _BookRequestScreenState extends ConsumerState<BookRequestScreen> {
         return;
       }
 
-      if (!state.isVerified) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content:
-                    Text('Please verify your phone number to request books')),
-          );
-        }
-        return;
-      }
+      // Get the book request service
+      final bookRequestService = ref.read(bookRequestServiceProvider);
 
-      // Rest of your submit logic
+      // Submit the request
+      await bookRequestService.submitRequest(
+        userId: userId,
+        title: _titleController.text.trim(),
+        author: _authorController.text.trim().isNotEmpty 
+            ? _authorController.text.trim() 
+            : null,
+      );
+
+      if (!mounted) return;
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Book request submitted successfully!')),
+      );
+
+      // Clear the form
+      _titleController.clear();
+      _authorController.clear();
+
+      // Navigate back
+      context.pop();
+
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error submitting request: $e')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
