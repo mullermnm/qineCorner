@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:qine_corner/core/api/api_service.dart';
 import 'package:qine_corner/core/models/article.dart';
+import 'package:qine_corner/core/models/comment.dart';
 import 'package:qine_corner/core/models/user.dart';
 import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/core/services/article_service.dart';
@@ -225,6 +226,30 @@ class ArticleNotifier extends StateNotifier<AsyncValue<Article?>> {
       state = AsyncValue.error(error, stackTrace);
     }
   }
+
+  Future<void> likeArticle(String id) async {
+    try {
+      await _service.likeArticle(id);
+      // Refresh article details
+      state = const AsyncValue.loading();
+      final article = await _service.getArticleDetails(id);
+      state = AsyncValue.data(article);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> unlikeArticle(String id) async {
+    try {
+      await _service.unlikeArticle(id);
+      // Refresh article details
+      state = const AsyncValue.loading();
+      final article = await _service.getArticleDetails(id);
+      state = AsyncValue.data(article);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
 }
 
 final articleProvider =
@@ -240,3 +265,11 @@ final articleProvider =
     state?.user,
   );
 });
+
+// Add these providers
+final articleCommentsProvider = FutureProvider.family<List<Comment>, String>(
+  (ref, articleId) async {
+    final service = ref.read(articleServiceProvider);
+    return service.getComments(articleId);
+  },
+);

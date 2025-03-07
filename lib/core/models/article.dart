@@ -62,6 +62,7 @@ class Article {
   final int shares;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isLiked;
 
   const Article({
     required this.id,
@@ -77,6 +78,7 @@ class Article {
     required this.shares,
     required this.createdAt,
     required this.updatedAt,
+    this.isLiked = false,
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
@@ -100,6 +102,7 @@ class Article {
       shares: json['shares'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      isLiked: json['isLiked'],
     );
   }
 
@@ -118,6 +121,7 @@ class Article {
       'shares': shares,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'isLiked': isLiked,
     };
   }
 
@@ -135,6 +139,7 @@ class Article {
     int? shares,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isLiked,
   }) {
     return Article(
       id: id ?? this.id,
@@ -150,6 +155,7 @@ class Article {
       shares: shares ?? this.shares,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isLiked: isLiked ?? this.isLiked,
     );
   }
 
@@ -187,6 +193,7 @@ class Article {
       shares: 0,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      isLiked: false,
     );
   }
 }

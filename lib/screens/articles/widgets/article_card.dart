@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qine_corner/core/models/article.dart';
+import 'package:qine_corner/core/providers/article_provider.dart';
 import 'package:qine_corner/core/theme/app_colors.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import '../../../core/utils/text_formatter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ArticleCard extends StatelessWidget {
+class ArticleCard extends ConsumerStatefulWidget {
   final Article article;
   final VoidCallback? onLike;
   final VoidCallback? onSave;
@@ -20,18 +25,118 @@ class ArticleCard extends StatelessWidget {
   });
 
   @override
+  ConsumerState<ArticleCard> createState() => _ArticleCardState();
+}
+
+class _ArticleCardState extends ConsumerState<ArticleCard> {
+  late Article article;
+  bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    article = widget.article;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: Theme.of(context).dividerColor.withOpacity(0.1),
+        ),
+      ),
       child: InkWell(
-        onTap: () => context.push('/articles/${article.id.toString()}'),
+        onTap: () => context.push('/articles/${article.id}'),
+        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (article.media.isNotEmpty) ...[
-              // Article Media
-              SizedBox(
-                height: 200,
+            // Author Header
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                    child: Text(
+                      article.author!.name[0].toUpperCase(),
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          article.author!.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          timeago.format(article.createdAt),
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodySmall?.color,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.more_horiz),
+                    onPressed: () {
+                      // Show options menu
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // Article Content
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (article.title.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        article.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  _buildExpandableContent(context),
+                ],
+              ),
+            ),
+
+            // Article Image (only if exists)
+            if (article.media.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                constraints: const BoxConstraints(
+                  maxHeight: 300,
+                ),
+                width: double.infinity,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(12),
+                  ),
                 child: PageView.builder(
                   itemCount: article.media.length,
                   itemBuilder: (context, index) {
@@ -41,38 +146,16 @@ class ArticleCard extends StatelessWidget {
                         media.url,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: Icon(
-                                Icons.broken_image,
-                                size: 48,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    } else {
-                      // Video thumbnail
+                            return const SizedBox.shrink();
+                          },
+                        );
+                      } else if (media.type == 'video' && media.thumbnailUrl != null) {
                       return Stack(
                         fit: StackFit.expand,
                         children: [
                           Image.network(
-                            media.thumbnailUrl ?? '',
+                              media.thumbnailUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.video_file,
-                                    size: 48,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              );
-                            },
                           ),
                           Center(
                             child: Container(
@@ -91,132 +174,187 @@ class ArticleCard extends StatelessWidget {
                         ],
                       );
                     }
-                  },
-                ),
-              ),
-            ] else
-              Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.article,
-                    size: 48,
-                    color: Colors.grey,
+                      return const SizedBox.shrink();
+                    },
                   ),
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Tags
-                  if (article.tags.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      children: article.tags.map((tag) {
-                        return Chip(
-                          label: Text(tag),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                        );
-                      }).toList(),
-                    ),
-                  const SizedBox(height: 12),
-                  // Title
-                  Text(
-                    article.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Preview
-                  Text(
-                    article.content,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 16),
-                  // Author and Stats
-                  Row(
-                    children: [
-                      if (article.author != null) ...[
-                        CircleAvatar(
-                          backgroundImage:
-                              NetworkImage(article.author!.profileImage ?? ''),
-                          radius: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
+
+            // Interaction Buttons
+            _buildInteractionButtons(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableContent(BuildContext context) {
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(
+        text: article.content,
+        style: const TextStyle(fontSize: 14),
+      ),
+      maxLines: 3,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: MediaQuery.of(context).size.width - 32);
+
+    final bool hasTextOverflow = textPainter.didExceedMaxLines;
+
+    return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                article.author!.name,
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                              Text(
-                                '${_formatDate(article.createdAt)} • ${article.readTime}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
+        Html(
+          data: TextFormatter.parseMarkdown(article.content),
+          style: {
+            "body": Style(
+              margin: Margins.zero,
+              padding: HtmlPaddings.zero,
+              fontSize: FontSize(14),
+              maxLines: _expanded ? null : 3,
+              textOverflow: TextOverflow.ellipsis,
+            ),
+          },
+        ),
+        if (hasTextOverflow)
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Text(
+              _expanded ? 'Show less' : 'Show more',
+              style: TextStyle(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
                           ),
                         ),
                       ],
-                      if (showActions) ...[
-                        IconButton(
-                          icon: const Icon(Icons.favorite_border),
-                          onPressed: onLike,
-                        ),
-                        Text(
-                          article.likes.toString(),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.bookmark_border),
-                          onPressed: onSave,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.share),
-                          onPressed: onShare,
-                        ),
-                      ],
-                    ],
-                  ),
-                  // Stats Row
-                  if (showActions)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
+    );
+  }
+
+  Widget _buildInteractionButtons(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          _buildInteractionButton(
+            context,
+            icon: article.isLiked ? Icons.favorite : Icons.favorite_border,
+            iconColor: article.isLiked ? Colors.red : null,
+            label: '${article.likes}',
+            onTap: () async {
+              try {
+                // Update UI immediately
+                setState(() {
+                  article = article.copyWith(
+                    isLiked: !article.isLiked,
+                    likes: article.isLiked ? article.likes - 1 : article.likes + 1,
+                  );
+                });
+
+                // Make API call
+                if (article.isLiked) {
+                  await ref.read(articleProvider.notifier).likeArticle(article.id.toString());
+                } else {
+                  await ref.read(articleProvider.notifier).unlikeArticle(article.id.toString());
+                }
+
+                // Refresh the articles list in the background
+                ref.refresh(articlesProvider);
+              } catch (e) {
+                // Revert on error
+                setState(() {
+                  article = article.copyWith(
+                    isLiked: !article.isLiked,
+                    likes: article.isLiked ? article.likes - 1 : article.likes + 1,
+                  );
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(e.toString())),
+                );
+              }
+            },
+          ),
+          const SizedBox(width: 16),
+          _buildInteractionButton(
+            context,
+            icon: Icons.comment_outlined,
+            label: '${article.comments ?? 0}',
+            onTap: () => context.push('/articles/${article.id}/comments'),
+          ),
+          const SizedBox(width: 16),
+          _buildInteractionButton(
+            context,
+            icon: Icons.share_outlined,
+            label: 'Share',
+            onTap: widget.onShare,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionsMenu(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_horiz),
+      onSelected: (value) async {
+        switch (value) {
+          case 'save':
+            // Implement save functionality
+            break;
+          case 'report':
+            // Implement report functionality
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'save',
+          child: Row(
+            children: [
+              Icon(Icons.bookmark_border),
+              SizedBox(width: 8),
+              Text('Save article'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'report',
                       child: Row(
                         children: [
-                          _StatChip(
-                            icon: Icons.remove_red_eye,
-                            count: article.views,
-                          ),
-                          const SizedBox(width: 16),
-                          _StatChip(
-                            icon: Icons.comment,
-                            count: article.comments,
-                          ),
-                          const SizedBox(width: 16),
-                          _StatChip(
-                            icon: Icons.share,
-                            count: article.shares,
-                          ),
+              Icon(Icons.flag_outlined),
+              SizedBox(width: 8),
+              Text('Report'),
                         ],
                       ),
                     ),
                 ],
+    );
+  }
+
+  Widget _buildInteractionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+    Color? iconColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: iconColor ?? Theme.of(context).textTheme.bodySmall?.color,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                fontSize: 14,
               ),
             ),
           ],
@@ -224,47 +362,78 @@ class ArticleCard extends StatelessWidget {
       ),
     );
   }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return '${difference.inMinutes}m ago';
-      }
-      return '${difference.inHours}h ago';
-    }
-    if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    }
-    return '${date.day}/${date.month}/${date.year}';
-  }
 }
 
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final int count;
+// Custom ExpandableText widget
+class ExpandableText extends StatefulWidget {
+  final String text;
+  final int maxLines;
+  final TextStyle? style;
+  final String expandText;
+  final String collapseText;
+  final Color? linkColor;
+  final bool animation;
+  final Duration animationDuration;
 
-  const _StatChip({
-    required this.icon,
-    required this.count,
+  const ExpandableText(
+    this.text, {
+    super.key,
+    this.maxLines = 2,
+    this.style,
+    this.expandText = 'Show more',
+    this.collapseText = 'Show less',
+    this.linkColor,
+    this.animation = true,
+    this.animationDuration = const Duration(milliseconds: 200),
   });
 
   @override
+  State<ExpandableText> createState() => _ExpandableTextState();
+}
+
+class _ExpandableTextState extends State<ExpandableText> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey,
+        AnimatedCrossFade(
+          firstChild: Html(
+            data: widget.text,
+            style: {
+              "body": Style(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+                fontSize: FontSize(14),
+                maxLines: widget.maxLines,
+                textOverflow: TextOverflow.ellipsis,
+              ),
+            },
+          ),
+          secondChild: Html(
+            data: widget.text,
+            style: {
+              "body": Style(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+                fontSize: FontSize(14),
+              ),
+            },
+          ),
+          crossFadeState:
+              _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: widget.animation ? widget.animationDuration : Duration.zero,
         ),
-        const SizedBox(width: 4),
-        Text(
-          count.toString(),
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey,
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Text(
+            _expanded ? widget.collapseText : widget.expandText,
+            style: TextStyle(
+              color: widget.linkColor ?? Theme.of(context).primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
               ),
         ),
       ],

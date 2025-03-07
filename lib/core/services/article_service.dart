@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:qine_corner/core/api/api_service.dart';
 import 'package:qine_corner/core/models/article.dart';
+import 'package:qine_corner/core/models/comment.dart';
 
 class ArticleService {
   final ApiService _apiService;
@@ -26,6 +27,7 @@ class ArticleService {
       print('Article response: $response');
 
       final articles = response['articles'] as List;
+      print('Articles: $articles');
       return articles
           .map((json) => Article.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -113,6 +115,17 @@ class ArticleService {
 
   Future<void> viewArticle(String id) async {
     await _apiService.post('/articles/$id/view');
+  }
+
+  Future<List<Comment>> getComments(String articleId) async {
+    try {
+      final response = await _apiService.get('/articles/$articleId/comments');
+      final comments = response['comments'] as List;
+      return comments.map((json) => Comment.fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching comments: $e');
+      return [];
+    }
   }
 
   String _buildQueryString(Map<String, String> params) {
