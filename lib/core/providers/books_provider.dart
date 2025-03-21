@@ -132,7 +132,7 @@ class BooksNotifier extends StateNotifier<BooksState> {
       final titleMatch = book.title.toLowerCase().contains(lowercaseQuery);
       final authorMatch = book.author.name.toLowerCase().contains(lowercaseQuery);
       final categoryMatch = book.categories
-          .any((category) => category.toLowerCase().contains(lowercaseQuery));
+          .any((category) => category.name.toLowerCase().contains(lowercaseQuery));
       final descriptionMatch =
           book.description.toLowerCase().contains(lowercaseQuery);
       return titleMatch || authorMatch || categoryMatch || descriptionMatch;

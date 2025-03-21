@@ -75,6 +75,8 @@ class AuthConstants {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(29),
       ),
+      disabledBackgroundColor: kPrimaryColor,
+      disabledForegroundColor: Colors.white,
     );
   }
 

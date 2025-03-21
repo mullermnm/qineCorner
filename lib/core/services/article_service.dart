@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:qine_corner/core/api/api_service.dart';
 import 'package:qine_corner/core/models/article.dart';
 import 'package:qine_corner/core/models/comment.dart';
@@ -66,9 +67,32 @@ class ArticleService {
   }
 
   Future<Article> createArticle(Article article) async {
-    final response =
-        await _apiService.post('/articles', body: article.toJson());
-    return Article.fromJson(response['article'] ?? response['data']);
+    try {
+      // Ensure content is properly formatted
+      var content = article.content;
+      // if (content is String) {
+      //   try {
+      //     // If it's a Delta JSON string, parse it
+      //     content = jsonDecode(content);
+      //   } catch (e) {
+      //     // If parsing fails, create a simple Delta
+      //     content = [{"insert": content}] as String;
+      //   }
+      // }
+
+      final body = {
+        ...article.toJson(),
+        'content': content, // Send as parsed JSON object
+      };
+
+      print('Sending article body: ${jsonEncode(body)}'); // Debug log
+      
+      final response = await _apiService.post('/articles', body: body);
+      return Article.fromJson(response['article'] ?? response['data']);
+    } catch (e) {
+      print('Error creating article: $e');
+      rethrow;
+    }
   }
 
   Future<Article> updateArticle(String id, Article article) async {
@@ -120,10 +144,121 @@ class ArticleService {
   Future<List<Comment>> getComments(String articleId) async {
     try {
       final response = await _apiService.get('/articles/$articleId/comments');
-      final comments = response['comments'] as List;
-      return comments.map((json) => Comment.fromJson(json)).toList();
+      
+      final List<dynamic> commentsList = response['data'] ?? response['comments'] ?? [];
+      
+      return commentsList
+          .map((json) => Comment.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       print('Error fetching comments: $e');
+      return [];
+    }
+  }
+
+  Future<Comment> addComment(String articleId, String content, {String? parentId}) async {
+    try {
+      // If it's a reply, use the reply endpoint
+      final endpoint = parentId != null 
+          ? '/comments/$parentId/replies'
+          : '/articles/$articleId/comments';
+
+      final response = await _apiService.post(
+        endpoint,
+        body: {
+          'content': content,
+          if (parentId == null) 'article_id': articleId,
+        },
+      );
+
+      print('Add comment response: $response'); // Debug log
+
+      final commentData = response['data'] ?? response['comment'];
+      if (commentData == null) {
+        throw Exception('Invalid response: No comment data received');
+      }
+
+      return Comment.fromJson(commentData as Map<String, dynamic>);
+    } catch (e) {
+      print('Error adding comment: $e');
+      throw Exception('Error adding comment: $e');
+    }
+  }
+
+  Future<void> likeComment(String commentId) async {
+    try {
+      final response = await _apiService.post('/comments/$commentId/like');
+      if (response == null || response['success'] != true) {
+        throw Exception('Failed to like comment');
+      }
+    } catch (e) {
+      print('Error liking comment: $e');
+      throw Exception('Error liking comment: $e');
+    }
+  }
+
+  Future<void> unlikeComment(String commentId) async {
+    try {
+      final response = await _apiService.delete('/comments/$commentId/like');
+      if (response == null || response['success'] != true) {
+        throw Exception('Failed to unlike comment');
+      }
+    } catch (e) {
+      print('Error unliking comment: $e');
+      throw Exception('Error unliking comment: $e');
+    }
+  }
+
+  Future<void> deleteComment(String commentId) async {
+    try {
+      await _apiService.delete('/comments/$commentId');
+    } catch (e) {
+      print('Error deleting comment: $e');
+      throw Exception('Error deleting comment: $e');
+    }
+  }
+
+  Future<Article> getArticle(String id) async {
+    try {
+      final response = await _apiService.get('/articles/$id');
+      final article = Article.fromJson(response['data']);
+      
+      // Get comments count
+      final commentsResponse = await _apiService.get('/articles/$id/comments');
+      final commentsList = commentsResponse['data'] ?? [];
+      int totalComments = commentsList.length;
+      
+      
+      // Return article with updated comment count
+      return article.copyWith(comments: totalComments);
+    } catch (e) {
+      print('Error getting article: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Article>> getMyDrafts() async {
+    try {
+      final response = await _apiService.get('/articles/drafts');
+      final articles = response['data'] ?? [];
+      return (articles as List)
+          .map((json) => Article.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Error fetching drafts: $e');
+      return [];
+    }
+  }
+
+  Future<List<Article>> getMyArticles() async {
+    try {
+      final response = await _apiService.get('/articles/my');
+      final articles = response['data'] ?? [];
+      return (articles as List)
+          .map((json) => Article.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Error fetching my articles: $e');
       return [];
     }
   }

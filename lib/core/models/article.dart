@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:qine_corner/core/models/user.dart';
+import 'package:convert/convert.dart';
 
 enum ArticleStatus { draft, published, deleted }
 
@@ -58,7 +61,7 @@ class Article {
   final ArticleStatus status;
   final int views;
   final int likes;
-  final int comments;
+  final int? comments;
   final int shares;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -74,7 +77,7 @@ class Article {
     required this.status,
     required this.views,
     required this.likes,
-    required this.comments,
+    this.comments,
     required this.shares,
     required this.createdAt,
     required this.updatedAt,
@@ -85,7 +88,9 @@ class Article {
     return Article(
       id: json['id'] as int,
       title: json['title'] as String,
-      content: json['content'] as String,
+      content: json['content'] is String 
+          ? json['content']
+          : jsonEncode(json['content']),
       author: User.fromJson(json['author'] as Map<String, dynamic>),
       tags: List<String>.from(json['tags'] as List),
       media: (json['media'] as List?)
@@ -98,7 +103,7 @@ class Article {
       ),
       views: json['views'] as int? ?? 0,
       likes: json['likes'] as int? ?? 0,
-      comments: json['comments'] as int? ?? 0,
+      comments: json['comments_count'] ?? json['comments'] ?? 0,
       shares: json['shares'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -110,14 +115,14 @@ class Article {
     return {
       'id': id,
       'title': title,
-      'content': content,
+      'content': content is String ? content : jsonEncode(content),
       'author': author.toJson(),
       'tags': tags,
       'media': media.map((m) => m.toJson()).toList(),
       'status': status.name,
       'views': views,
       'likes': likes,
-      'comments': comments,
+      'comments_count': comments,
       'shares': shares,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),

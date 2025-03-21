@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qine_corner/core/api/api_config.dart';
 import 'package:qine_corner/core/models/note.dart';
 import 'package:qine_corner/core/providers/notes_provider.dart';
 import 'package:qine_corner/screens/goal/widgets/goal_congratulations_dialog.dart';
@@ -17,6 +18,7 @@ import '../../core/providers/reading_goal_provider.dart';
 import '../../core/providers/recent_books_provider.dart';
 import '../../core/providers/reading_streak_provider.dart';
 import 'widgets/streak_animation_dialog.dart';
+import '../../core/config/app_config.dart';
 
 class PdfViewerScreen extends ConsumerStatefulWidget {
   final Book book;
@@ -42,6 +44,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   bool _hasShownGoalDialog = false;
   String? _selectedText;
 
+  String get _fullPdfUrl => AppConfig.getPdfUrl(widget.book.filePath);
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +54,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(recentBooksProvider.notifier).addRecentBook(widget.book);
     });
+    
+    print('Loading PDF from: $_fullPdfUrl');
   }
 
   @override
@@ -501,8 +507,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       ),
       body: Stack(
         children: [
-          SfPdfViewer.asset(
-            'assets/books/fikir_eske_mekabir.pdf',
+          SfPdfViewer.network(
+            _fullPdfUrl,
             controller: _pdfViewerController,
             onDocumentLoaded: (PdfDocumentLoadedDetails details) {
               setState(() {
@@ -511,6 +517,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
               });
             },
             onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+              print('PDF load failed: ${details.error}');
               setState(() {
                 _isLoading = false;
                 _hasError = true;

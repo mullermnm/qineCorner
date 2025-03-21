@@ -55,6 +55,10 @@ dependencies:
   flutter_markdown: ^0.7.5
   file_picker: ^9.0.1
   flutter_html: ^3.0.0-beta.2
+  flutter_quill: ^11.1.0
+  flutter_quill_extensions: ^11.0.0
+  chapasdk: ^0.0.7+1
+  webview_flutter: ^4.0.0
 
 dev_dependencies:
   flutter_test:
@@ -77,8 +81,6 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
-    - assets/images/books/
-    - assets/books/
     - assets/animations/
 
   # An image asset can refer to one or more resolution-specific "variants", see

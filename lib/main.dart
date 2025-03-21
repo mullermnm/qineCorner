@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:qine_corner/app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qine_corner/core/providers/shared_preferences_provider.dart';

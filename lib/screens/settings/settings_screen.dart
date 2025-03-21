@@ -15,7 +15,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Solo Reader',
+          'Personal Settings',
           style: TextStyle(
             color: Theme.of(context).primaryColor,
             fontWeight: FontWeight.bold,
@@ -94,9 +94,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 title: const Text('Remove Ads Only'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // Handle remove ads
-                },
+                onTap: () => context.push('/premium-upgrade'),
               ),
               const Divider(),
 
@@ -118,29 +116,28 @@ class SettingsScreen extends ConsumerWidget {
               ),
               _buildSettingsTile(
                 context,
-                icon: Icons.language,
-                title: 'Language',
-                onTap: () {
-                  // Handle language selection
-                },
+                icon: Icons.download_rounded,
+                title: 'Downloads',
+                onTap: () => context.push('/downloads'),
               ),
-
-              // Preferences Section
-              _buildSectionTitle(context, 'Preferences'),
-                            _buildSettingsTile(
+              _buildSettingsTile(
                               context,
-                icon: Icons.book_outlined,
+                icon: Icons.checklist_rtl_rounded,
                               title: 'Reading Preferences',
                               onTap: () {
                                 context.push('/reading-preferences');
                               },
                             ),
+
+              // Preferences Section
+              _buildSectionTitle(context, 'terms'),
+                            
                             _buildSettingsTile(
                               context,
                 icon: Icons.privacy_tip_outlined,
                 title: 'Terms & Privacy',
                               onTap: () {
-                  // Handle terms of services
+                  context.go('/terms');
                 },
               ),
               _buildSettingsTile(
@@ -148,12 +145,7 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.info_outline,
                 title: 'About App',
                 onTap: () {
-                  showAboutDialog(
-                    context: context,
-                    applicationName: 'Qine Corner',
-                    applicationVersion: '1.0.0',
-                    applicationLegalese: '© 2025 Qine Corner',
-                  );
+                  context.push('/about');
                 },
               ),
 

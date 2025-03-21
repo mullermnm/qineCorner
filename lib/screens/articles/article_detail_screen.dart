@@ -11,6 +11,8 @@ import 'package:qine_corner/screens/error/widgets/animated_error_widget.dart';
 import 'package:qine_corner/screens/articles/widgets/comment_item.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:html/parser.dart';
+import 'package:qine_corner/core/providers/comment_provider.dart';
+import 'package:qine_corner/screens/articles/widgets/article_card.dart';
 
 class ArticleDetailScreen extends ConsumerStatefulWidget {
   final String articleId;
@@ -27,6 +29,8 @@ class ArticleDetailScreen extends ConsumerStatefulWidget {
 
 class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
   final _commentController = TextEditingController();
+  String? _replyToId;
+  String? _replyToUsername;
 
   @override
   void dispose() {
@@ -34,10 +38,65 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     super.dispose();
   }
 
+  Future<void> _refreshData() async {
+    // Fix the refresh functionality
+    try {
+      // Refresh article details
+      await ref.refresh(articleDetailsProvider(widget.articleId).future);
+      // Refresh comments
+      if (mounted) {
+        await ref.read(commentProvider(widget.articleId).notifier).loadComments();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitComment() async {
+    if (_commentController.text.trim().isEmpty) return;
+
+    try {
+      final commentNotifier = ref.read(commentProvider(widget.articleId).notifier);
+      
+      // Debug log
+      print('Submitting comment with parentId: $_replyToId');
+      
+      await commentNotifier.addComment(
+        _commentController.text,
+        parentId: _replyToId,
+      );
+      
+      if (mounted) {
+        _commentController.clear();
+        setState(() => _replyToId = null);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Comment added successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        print('Error in UI: $e'); // Debug log
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error posting comment: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final articleAsync = ref.watch(articleDetailsProvider(widget.articleId));
-    final commentsAsync = ref.watch(articleCommentsProvider(widget.articleId));
     final currentUser = ref.watch(authNotifierProvider).value?.user;
 
     return Scaffold(
@@ -47,59 +106,30 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
           if (currentUser != null) _buildOptionsMenu(),
         ],
       ),
-      body: articleAsync.when(
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: articleAsync.when(
           data: (article) {
-          if (article == null) return const Center(child: Text('Article not found'));
+            if (article == null) {
+              return const Center(child: Text('Article not found'));
+            }
 
-          return Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  children: [
-                    // Article content
-                    _buildArticleContent(article),
-                    
-                    // Interaction buttons
-                    _buildInteractionButtons(article),
-                    
-                    const Divider(),
-                    
-                    // Comments section
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: commentsAsync.when(
-                        data: (comments) => Column(
-                          children: comments.map((comment) => 
-                            CommentItem(
-                              comment: comment,
-                              onReply: () => _showReplyDialog(comment),
-                              onEdit: currentUser?.id == comment.userId 
-                                ? () => _showEditCommentDialog(comment)
-                                : null,
-                              onDelete: currentUser?.id == comment.userId
-                                ? () => _deleteComment(comment.id)
-                                : null,
-                            ),
-                          ).toList(),
-                        ),
-                        loading: () => const CircularProgressIndicator(),
-                        error: (e, _) => Text('Error loading comments: $e'),
-                      ),
-                    ),
-                  ],
-                ),
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  ArticleCard(article: article, showActions: true),
+                  const Divider(),
+                  _buildCommentSection(),
+                ],
               ),
-              
-              // Comment input
-              if (currentUser != null)
-                _buildCommentInput(),
-            ],
-          );
-        },
-        loading: () => const LoadingAnimation(),
-        error: (e, _) => AnimatedErrorWidget(
-          message: e.toString(),
-          onRetry: () => ref.refresh(articleDetailsProvider(widget.articleId)),
+            );
+          },
+          loading: () => const LoadingAnimation(),
+          error: (e, _) => AnimatedErrorWidget(
+            message: e.toString(),
+            onRetry: _refreshData,
+          ),
         ),
       ),
     );
@@ -107,7 +137,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
 
   Widget _buildOptionsMenu() {
     return PopupMenuButton<String>(
-      onSelected: (value) async {
+                onSelected: (value) async {
         switch (value) {
           case 'edit':
             context.push('/articles/${widget.articleId}/edit');
@@ -125,124 +155,112 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     );
   }
 
-  Widget _buildCommentInput() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _commentController,
-              decoration: const InputDecoration(
-                hintText: 'Write a comment...',
-                border: OutlineInputBorder(),
-              ),
+  Widget _buildCommentSection() {
+    final commentsAsync = ref.watch(commentProvider(widget.articleId));
+    final currentUser = ref.watch(authNotifierProvider).value?.user;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Comments',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        if (currentUser != null) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    decoration: InputDecoration(
+                      hintText: _replyToId != null 
+                          ? 'Write a reply...'
+                          : 'Write a comment...',
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: null,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: _submitComment,
+                ),
+              ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () {
-              if (_commentController.text.trim().isNotEmpty) {
-                // Add comment functionality here
-                _commentController.clear();
-              }
+          _buildReplyingTo(),
+        ],
+        const SizedBox(height: 16),
+        commentsAsync.when(
+          data: (comments) => ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: comments.length,
+            itemBuilder: (context, index) {
+              final comment = comments[index];
+              return CommentItem(
+                comment: comment,
+                onLike: (id) => ref.read(commentProvider(widget.articleId).notifier)
+                    .likeComment(id),
+                onUnlike: (id) => ref.read(commentProvider(widget.articleId).notifier)
+                    .unlikeComment(id),
+                onReply: _setupReply,
+                onDelete: (id) async {
+                  // Add delete confirmation dialog
+                  final shouldDelete = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                      title: const Text('Delete Comment'),
+                      content: const Text('Are you sure you want to delete this comment?'),
+                        actions: [
+                          TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                  if (shouldDelete == true && mounted) {
+                    await ref.read(articleServiceProvider).deleteComment(id);
+                    ref.refresh(commentProvider(widget.articleId));
+                  }
+                },
+              );
             },
           ),
-        ],
-      ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Text('Error loading comments: $error'),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildArticleContent(Article article) {
-    return Container(
-      color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-          // Author header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-                  children: [
-                    CircleAvatar(
-                  radius: 20,
-                      backgroundImage: article.author.profileImage != null
-                          ? NetworkImage(article.author.profileImage!)
-                          : null,
-                      child: article.author.profileImage == null
-                      ? Text(article.author.name[0].toUpperCase())
-                          : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        article.author.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        timeago.format(article.createdAt),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Article content
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (article.title.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      article.title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                Html(data: article.content),
-              ],
-            ),
-          ),
-
-          // Media content
-          if (article.media.isNotEmpty)
-            Container(
-              constraints: const BoxConstraints(maxHeight: 400),
-              width: double.infinity,
-              child: PageView.builder(
-                itemCount: article.media.length,
-                itemBuilder: (context, index) {
-                  final media = article.media[index];
-                  return Image.network(
-                    media.url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                  );
-                },
-              ),
-            ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ArticleCard(
+        article: article,
+        showActions: false,
+        onShare: () => _shareArticle(article),
       ),
     );
   }
 
   Widget _buildInteractionButtons(Article article) {
     return Container(
-      padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -253,7 +271,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
+                  children: [
           _buildInteractionButton(
             icon: article.isLiked ? Icons.favorite : Icons.favorite_border,
             label: '${article.likes ?? 0}',
@@ -269,10 +287,10 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
             icon: Icons.share_outlined,
             label: 'Share',
             onTap: () => _shareArticle(article),
-          ),
-        ],
-      ),
-    );
+                ),
+              ],
+            ),
+          );
   }
 
   Widget _buildInteractionButton({
@@ -318,66 +336,36 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     // Implement share functionality
   }
 
-  Future<void> _showReplyDialog(Comment comment) async {
-    final controller = TextEditingController();
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reply to Comment'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'Write your reply...',
+  Widget _buildReplyingTo() {
+    if (_replyToId == null || _replyToUsername == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Text(
+            'Replying to @$_replyToUsername',
+            style: const TextStyle(color: Colors.blue),
           ),
-        ),
-        actions: [
+          const SizedBox(width: 8),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => setState(() {
+              _replyToId = null;
+              _replyToUsername = null;
+            }),
             child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              // Implement reply functionality
-              Navigator.pop(context);
-            },
-            child: const Text('Reply'),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _showEditCommentDialog(Comment comment) async {
-    final controller = TextEditingController(text: comment.content);
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Comment'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'Edit your comment...',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              // Implement edit functionality
-              Navigator.pop(context);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _deleteComment(String commentId) async {
-    // Implement delete functionality
-    // Show confirmation dialog first
+  void _setupReply(String commentId, String username) {
+    setState(() {
+      _replyToId = commentId;
+      _replyToUsername = username;
+      // Focus the text field
+      FocusScope.of(context).requestFocus(FocusNode());
+    });
   }
 }

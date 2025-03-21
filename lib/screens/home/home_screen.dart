@@ -35,6 +35,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   setState(() {
                     _searchQuery = query;
                   });
+                  
+                  // Actually perform the search
+                  if (query.isNotEmpty) {
+                    // Debounce the search to avoid too many API calls
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      if (query == _searchQuery) { // Only search if query hasn't changed
+                        ref.read(booksProvider.notifier).searchBooks(query);
+                      }
+                    });
+                  }
                 },
               ),
               pinned: true,

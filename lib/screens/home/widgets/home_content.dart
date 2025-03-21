@@ -65,7 +65,7 @@ class HomeContent extends ConsumerWidget {
                     ? const RecentBooks()
                     : CategoryBooksList(
                         categoryId: selectedCategoryId,
-                        title: getCategoryTitle(selectedCategoryId),
+                        // title: getCategoryTitle(selectedCategoryId),
                       ),
               ],
             ),

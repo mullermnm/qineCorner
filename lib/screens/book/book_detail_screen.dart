@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qine_corner/common/widgets/primary_button.dart';
@@ -178,17 +180,37 @@ class BookDetailScreen extends ConsumerWidget {
                         scrollDirection: Axis.horizontal,
                         itemCount: book.categories.length,
                         itemBuilder: (context, index) {
-                          final categoryId = book.categories[index];
-                          final category = categories.firstWhere(
-                            (c) => c.id == categoryId,
-                            orElse: () => Category(
-                              icon: "question_mark",
-                              id: categoryId,
-                              name: 'Unknown Category',
+                          // Extract category information directly from the map
+                          Category categoryData;
+                          
+                          // Handle different formats
+                          if (book.categories[index] is Map) {
+                            // If it's already a Map, create a Category from it
+                            final catMap = book.categories[index] as Map<dynamic, dynamic>;
+                            categoryData = Category(
+                              id: catMap['id']?.toString() ?? '',
+                              name: catMap['name']?.toString() ?? 'Unknown',
+                              icon: catMap['icon']?.toString() ?? 'category',
                               booksCount: 0,
-                            ),
-                          );
-
+                            );
+                          } else {
+                            // If it's just an ID, try to find it in the categories list
+                            final categoryId = book.categories[index].id;
+                            categoryData = categories.firstWhere(
+                              (c) => c.id == categoryId,
+                              orElse: () => Category(
+                                icon: "category",
+                                id: categoryId,
+                                name: 'Category $categoryId',
+                                booksCount: 0,
+                              ),
+                            );
+                          }
+                          
+                          // Get name and icon
+                          final name = categoryData.name;
+                          final iconName = categoryData.icon;
+                          
                           return Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: Container(
@@ -203,34 +225,26 @@ class BookDetailScreen extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: isDark
-                                        ? Colors.black.withOpacity(0.2)
-                                        : Colors.grey.withOpacity(0.2),
-                                    spreadRadius: 1,
+                                    color: Colors.black.withOpacity(0.1),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    category.icon ?? '',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: isDark
-                                          ? AppColors.darkTextSecondary
-                                          : AppColors.lightTextSecondary,
-                                    ),
+                                  Icon(
+                                    _getCategoryIcon(iconName!),
+                                    size: 16,
+                                    color: _getCategoryColor(name),
                                   ),
-                                  const SizedBox(width: 6),
-                                  AppText.body(
-                                    category.name,
-                                    color: isDark
-                                        ? AppColors.darkTextSecondary
-                                        : AppColors.lightTextSecondary,
-                                    bold: false,
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      color: _getCategoryColor(name),
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -271,6 +285,7 @@ class BookDetailScreen extends ConsumerWidget {
                                   onPressed: () => _downloadBook(context, ref),
                                   text: showLabels ? 'Download' : '',
                                   icon: Icons.download_rounded,
+                                  iconColor: AppColors.darkBackground,
                                   padding:
                                       const EdgeInsets.symmetric(horizontal: 8),
                                 ),
@@ -315,7 +330,7 @@ class BookDetailScreen extends ConsumerWidget {
                         },
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 30),
 
                     // More from author section
                     MoreFromAuthor(currentBook: book),
@@ -328,5 +343,37 @@ class BookDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  IconData _getCategoryIcon(String iconName) {
+    switch (iconName.toLowerCase()) {
+      case 'auto_stories': return Icons.auto_stories;
+      case 'castle': return Icons.castle;
+      case 'casino': return Icons.casino;
+      case 'rocket': return Icons.rocket;
+      case 'search': return Icons.search;
+      case 'favorite': return Icons.favorite;
+      case 'psychology': return Icons.psychology;
+      case 'dangerous': return Icons.dangerous;
+      case 'history_edu': return Icons.history_edu;
+      case 'person': return Icons.person;
+      default: return Icons.category;
+    }
+  }
+
+  Color _getCategoryColor(String categoryName) {
+    switch (categoryName.toLowerCase()) {
+      case 'fiction': return Colors.blue;
+      case 'fantasy': return Colors.purple;
+      case 'mystery': return Colors.amber;
+      case 'romance': return Colors.pink;
+      case 'thriller': return Colors.red;
+      case 'horror': return Colors.deepOrange;
+      case 'sci-fi': return Colors.indigo;
+      case 'science fiction': return Colors.indigo;
+      case 'biography': return Colors.teal;
+      case 'history': return Colors.brown;
+      default: return Colors.grey;
+    }
   }
 }

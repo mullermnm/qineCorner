@@ -168,20 +168,24 @@ class DownloadsScreen extends ConsumerWidget {
                             tooltip: 'Open file',
                           ),
                         IconButton(
-                          icon: Icon(
-                            download.isCompleted
-                                ? Icons.close
-                                : download.hasError
-                                    ? Icons.error
-                                    : Icons.close,
-                            color: download.hasError ? Colors.red : null,
-                          ),
+                          icon: download.isCompleted
+                              ? const Icon(Icons.delete)
+                              : download.hasError
+                                  ? const Icon(Icons.refresh, color: Colors.orange)
+                                  : const Icon(Icons.close),
                           onPressed: () {
-                            ref
-                                .read(downloadsProvider.notifier)
-                                .removeDownload(download.filePath);
+                            if (download.hasError) {
+                              // TODO: Implement retry functionality
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Retry not implemented yet')),
+                              );
+                            } else {
+                              ref.read(downloadsProvider.notifier).removeDownload(download.filePath);
+                            }
                           },
-                          tooltip: 'Remove from list',
+                          tooltip: download.hasError
+                              ? 'Retry download'
+                              : 'Remove from list',
                         ),
                       ],
                     ),

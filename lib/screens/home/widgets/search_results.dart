@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qine_corner/core/config/app_config.dart';
 import 'package:qine_corner/core/models/book.dart';
+import 'package:qine_corner/core/models/category.dart';
 import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/screens/auth/verification_screen.dart';
 
@@ -106,7 +108,7 @@ class SearchResults extends StatelessWidget {
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                book.coverUrl,
+                AppConfig.getAssetUrl(book.coverUrl),
                 width: 60,
                 height: 90,
                 fit: BoxFit.cover,
@@ -146,24 +148,25 @@ class SearchResults extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      book.rating!.toStringAsFixed(1),
+                      book.rating?.toStringAsFixed(1) ?? '0.0',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(width: 16),
-                    Icon(
-                      Icons.category,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        book.categories.join(', '),
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    if (book.categories.isNotEmpty)
+                      Expanded(
+                        child: SizedBox(
+                          height: 24,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: book.categories.length > 2 ? 2 : book.categories.length,
+                            separatorBuilder: (context, index) => const SizedBox(width: 4),
+                            itemBuilder: (context, index) {
+                              final category = book.categories[index];
+                              return _buildCategoryChip(context, category);
+                            },
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -176,5 +179,84 @@ class SearchResults extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget _buildCategoryChip(BuildContext context, dynamic category) {
+    // Extract category information
+    String name;
+    String icon = 'category';
+    
+    if (category is Map) {
+      name = category['name']?.toString() ?? 'Unknown';
+      icon = category['icon']?.toString() ?? 'category';
+    } else if (category is Category) {
+      name = category.name;
+      icon = category.icon ?? 'category';
+    } else {
+      name = category.toString();
+    }
+    
+    // Get color and icon
+    IconData iconData = _getCategoryIcon(icon);
+    Color color = _getCategoryColor(name);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(iconData, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            name,
+            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getCategoryName(dynamic category) {
+    if (category is Map) {
+      return category['name']?.toString() ?? 'Unknown';
+    }
+    return category.toString();
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'fiction': return Icons.auto_stories;
+      case 'fantasy': return Icons.casino;
+      case 'mystery': return Icons.search;
+      case 'romance': return Icons.favorite;
+      case 'thriller': return Icons.psychology;
+      case 'horror': return Icons.dangerous;
+      case 'sci-fi': return Icons.rocket;
+      case 'science fiction': return Icons.rocket;
+      case 'biography': return Icons.person;
+      case 'history': return Icons.history_edu;
+      default: return Icons.category;
+    }
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'fiction': return Colors.blue;
+      case 'fantasy': return Colors.purple;
+      case 'mystery': return Colors.amber;
+      case 'romance': return Colors.pink;
+      case 'thriller': return Colors.red;
+      case 'horror': return Colors.deepOrange;
+      case 'sci-fi': return Colors.indigo;
+      case 'science fiction': return Colors.indigo;
+      case 'biography': return Colors.teal;
+      case 'history': return Colors.brown;
+      default: return Colors.grey;
+    }
   }
 }

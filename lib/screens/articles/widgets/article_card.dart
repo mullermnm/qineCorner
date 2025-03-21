@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_html/flutter_html.dart' as html;
 import 'package:go_router/go_router.dart';
 import 'package:qine_corner/core/models/article.dart';
 import 'package:qine_corner/core/providers/article_provider.dart';
@@ -7,6 +7,9 @@ import 'package:qine_corner/core/theme/app_colors.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../../core/utils/text_formatter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:qine_corner/core/config/app_config.dart';
 
 class ArticleCard extends ConsumerStatefulWidget {
   final Article article;
@@ -30,12 +33,177 @@ class ArticleCard extends ConsumerStatefulWidget {
 
 class _ArticleCardState extends ConsumerState<ArticleCard> {
   late Article article;
-  bool _expanded = false;
+  bool _isExpanded = false;
+  late QuillController _quillController;
 
   @override
   void initState() {
     super.initState();
     article = widget.article;
+    _initializeQuillController();
+  }
+
+  @override
+  void didUpdateWidget(ArticleCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.article != oldWidget.article) {
+      article = widget.article;
+      _initializeQuillController();
+    }
+  }
+
+  void _initializeQuillController() {
+    try {
+      var contentJson = article.content;
+      List<dynamic> deltaList;
+      
+      if (contentJson is String) {
+        if (contentJson.contains('**')) {
+          // Handle markdown-style bold text
+          final text = contentJson.replaceAll('**', '');
+          deltaList = [
+            {"insert": text, "attributes": {"bold": true}},
+            {"insert": "\n"}
+          ];
+        }
+        else if (contentJson.startsWith('[{')) {
+          try {
+            // For the specific format we're seeing in the logs
+            final content = contentJson;
+            
+            // Manual conversion without RegExp
+            final fixed = content
+              .replaceAll('insert:', '"insert":')
+              .replaceAll('attributes:', '"attributes":')
+              .replaceAll('bold:', '"bold":')
+              .replaceAll('italic:', '"italic":')
+              .replaceAll('link:', '"link":')
+              .replaceAll('underline:', '"underline":')
+              .replaceAll(': {', ': {')
+              .replaceAll('true', 'true');
+              
+              print('Fixed JSON: $fixed');
+            
+            // Try parsing
+            try {
+              deltaList = jsonDecode(fixed);
+              
+              // Add missing newline if needed
+              if (deltaList.isNotEmpty) {
+                final lastItem = deltaList.last;
+                if (lastItem is Map && lastItem.containsKey('insert') && 
+                    lastItem['insert'] is String && !lastItem['insert'].toString().endsWith('\n')) {
+                  deltaList.add({"insert": "\n"});
+                }
+              }
+            } catch (e) {
+              print('JSON parse error: $e');
+              // Fallback to direct conversion
+              deltaList = _manuallyParseDelta(content);
+            }
+          } catch (e) {
+            print('Content processing error: $e');
+            deltaList = [{"insert": contentJson.toString()}, {"insert": "\n"}];
+          }
+        } else {
+          deltaList = [{"insert": contentJson}, {"insert": "\n"}];
+        }
+      } else {
+        deltaList = [{"insert": contentJson.toString()}, {"insert": "\n"}];
+      }
+
+      final doc = Document.fromJson(deltaList);
+      _quillController = QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    } catch (e) {
+      print('Error parsing content: $e');
+      final doc = Document()..insert(0, 'Error displaying content')..insert(1, '\n');
+      _quillController = QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    }
+  }
+  
+  List<dynamic> _manuallyParseDelta(String content) {
+    final result = <Map<String, dynamic>>[];
+    
+    // Handle potential newlines in the content
+    content = content.trim();
+    
+    // Remove outer brackets
+    if (content.startsWith('[') && content.endsWith(']')) {
+      content = content.substring(1, content.length - 1).trim();
+    }
+    
+    // Split by operation
+    final operations = <String>[];
+    int braceCount = 0;
+    int startIndex = 0;
+    
+    for (int i = 0; i < content.length; i++) {
+      if (content[i] == '{') braceCount++;
+      else if (content[i] == '}') {
+        braceCount--;
+        if (braceCount == 0) {
+          operations.add(content.substring(startIndex, i + 1).trim());
+          if (i + 2 < content.length) {
+            startIndex = i + 2; // Skip the '}, ' part
+          }
+        }
+      }
+    }
+    
+    for (final op in operations) {
+      final map = <String, dynamic>{};
+      
+      // Extract insert content with proper handling of string values
+      final insertPattern = RegExp(r'insert:\s*([^,}]+)');
+      final insertMatch = insertPattern.firstMatch(op);
+      if (insertMatch != null) {
+        final value = insertMatch.group(1)?.trim() ?? '';
+        // Store all values as strings in the insert field
+        map['insert'] = value;
+      }
+      
+      // Extract attributes
+      if (op.contains('attributes:')) {
+        map['attributes'] = <String, dynamic>{};
+        
+        if (op.contains('bold: true')) {
+          map['attributes']['bold'] = true;
+        } else if (op.contains('bold: false')) {
+          map['attributes']['bold'] = false;
+        }
+        
+        if (op.contains('italic: true')) {
+          map['attributes']['italic'] = true;
+        } else if (op.contains('italic: false')) {
+          map['attributes']['italic'] = false;
+        }
+      }
+      
+      if (map.isNotEmpty) {
+        result.add(map);
+      }
+    }
+    
+    // Ensure newline at the end
+    if (result.isNotEmpty && 
+        result.last.containsKey('insert') &&
+        !result.last['insert'].toString().endsWith('\n')) {
+      result.add({"insert": "\n"});
+    }
+    
+    return result;
+  }
+
+  @override
+  void dispose() {
+    _quillController.dispose();
+    super.dispose();
   }
 
   @override
@@ -75,7 +243,7 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                        children: [
                         Text(
                           article.author!.name,
                           style: const TextStyle(
@@ -95,9 +263,7 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.more_horiz),
-                    onPressed: () {
-                      // Show options menu
-                    },
+                    onPressed: () => _buildOptionsMenu(context),
                   ),
                 ],
               ),
@@ -113,120 +279,138 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        article.title,
+                    article.title,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
-                      ),
+                  ),
                     ),
-                  _buildExpandableContent(context),
+                  _buildContentSection(),
                 ],
               ),
             ),
 
-            // Article Image (only if exists)
+            // Media Section
             if (article.media.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                constraints: const BoxConstraints(
-                  maxHeight: 300,
-                ),
-                width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(12),
-                  ),
-                child: PageView.builder(
-                  itemCount: article.media.length,
-                  itemBuilder: (context, index) {
-                    final media = article.media[index];
-                    if (media.type == 'image') {
-                      return Image.network(
-                        media.url,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                            return const SizedBox.shrink();
-                          },
-                        );
-                      } else if (media.type == 'video' && media.thumbnailUrl != null) {
-                      return Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                              media.thumbnailUrl!,
-                            fit: BoxFit.cover,
-                          ),
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.play_arrow,
-                                color: Colors.white,
-                                size: 32,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ),
-              ),
+              _buildMediaSection(),
 
             // Interaction Buttons
             _buildInteractionButtons(context),
+
+            // Interaction Stats
+            _buildInteractionStats(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildExpandableContent(BuildContext context) {
-    final TextPainter textPainter = TextPainter(
-      text: TextSpan(
-        text: article.content,
-        style: const TextStyle(fontSize: 14),
-      ),
-      maxLines: 3,
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: MediaQuery.of(context).size.width - 32);
-
-    final bool hasTextOverflow = textPainter.didExceedMaxLines;
-
+  Widget _buildContentSection() {
     return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-        Html(
-          data: TextFormatter.parseMarkdown(article.content),
-          style: {
-            "body": Style(
-              margin: Margins.zero,
-              padding: HtmlPaddings.zero,
-              fontSize: FontSize(14),
-              maxLines: _expanded ? null : 3,
-              textOverflow: TextOverflow.ellipsis,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Limited height container when collapsed
+        Container(
+          constraints: BoxConstraints(
+            maxHeight: _isExpanded ? double.infinity : 80, // Show only ~2-3 lines when collapsed
+          ),
+          child: ClipRect(
+            child: QuillEditor(
+              controller: _quillController,
+              focusNode: FocusNode(),
+              scrollController: ScrollController(),
+              
+              config: QuillEditorConfig(
+                requestKeyboardFocusOnCheckListChanged: false,
+                checkBoxReadOnly: true,
+                autoFocus: false,
+                onTapOutsideEnabled: false,
+              
+                customStyles: DefaultStyles(
+                  paragraph: DefaultTextBlockStyle(
+                    TextStyle(fontSize: 16, height: 1.5, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
+                    const HorizontalSpacing(0, 0),
+                    const VerticalSpacing(0, 0),
+                    const VerticalSpacing(0, 0),
+                    null,
+                  ),
+                  // Add other required styles
+                ),
+                scrollable: false,
+                showCursor: false,
+                enableInteractiveSelection: false, // Disable text selection
+                disableClipboard: true, // Prevent clipboard operations
+              ),
             ),
-          },
+          ),
         ),
-        if (hasTextOverflow)
-          GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
+        
+        // Show more/less button
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8.0),
             child: Text(
-              _expanded ? 'Show less' : 'Show more',
+              _isExpanded ? 'Show less' : 'Show more',
               style: TextStyle(
                 color: Theme.of(context).primaryColor,
                 fontWeight: FontWeight.bold,
               ),
-                          ),
-                        ),
-                      ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMediaSection() {
+    if (article.media.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Get the first media item
+    final mediaItem = article.media.first;
+    
+    // Convert relative URL to absolute URL using AppConfig
+    final imageUrl = AppConfig.getAssetUrl(mediaItem.url);
+    
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          imageUrl,
+          height: 200,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 200,
+              width: double.infinity,
+              color: Colors.grey[300],
+              child: const Center(
+                child: Icon(Icons.error_outline, size: 50, color: Colors.grey),
+              ),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              height: 200,
+              width: double.infinity,
+              color: Colors.grey[200],
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -234,7 +418,7 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Row(
-        children: [
+                    children: [
           _buildInteractionButton(
             context,
             icon: article.isLiked ? Icons.favorite : Icons.favorite_border,
@@ -286,9 +470,9 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
             icon: Icons.share_outlined,
             label: 'Share',
             onTap: widget.onShare,
-          ),
-        ],
-      ),
+                              ),
+                            ],
+                          ),
     );
   }
 
@@ -362,6 +546,45 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
       ),
     );
   }
+
+  Widget _buildInteractionStats() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.favorite,
+                size: 16,
+                color: article.isLiked ? Colors.red : Colors.grey,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${article.likes}',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Row(
+            children: [
+              const Icon(
+                Icons.comment_outlined,
+                size: 16,
+                color: Colors.grey,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${article.comments} ${article.comments == 1 ? 'comment' : 'comments'}',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // Custom ExpandableText widget
@@ -400,30 +623,25 @@ class _ExpandableTextState extends State<ExpandableText> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AnimatedCrossFade(
-          firstChild: Html(
+          firstChild: html.Html(
             data: widget.text,
             style: {
-              "body": Style(
-                margin: Margins.zero,
-                padding: HtmlPaddings.zero,
-                fontSize: FontSize(14),
+              "body": html.Style(
+                fontSize: html.FontSize(14),
                 maxLines: widget.maxLines,
                 textOverflow: TextOverflow.ellipsis,
               ),
             },
           ),
-          secondChild: Html(
+          secondChild: html.Html(
             data: widget.text,
             style: {
-              "body": Style(
-                margin: Margins.zero,
-                padding: HtmlPaddings.zero,
-                fontSize: FontSize(14),
+              "body": html.Style(
+                fontSize: html.FontSize(14),
               ),
             },
           ),
-          crossFadeState:
-              _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           duration: widget.animation ? widget.animationDuration : Duration.zero,
         ),
         GestureDetector(
@@ -440,3 +658,4 @@ class _ExpandableTextState extends State<ExpandableText> {
     );
   }
 }
+

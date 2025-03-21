@@ -232,76 +232,7 @@ class _ArticlesScreenState extends ConsumerState<ArticlesScreen> {
                 ),
               ),
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 300,
-                  child: featuredArticles.when(
-                    data: (articles) => ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: articles.length,
-                      itemBuilder: (context, index) {
-                        final article = articles[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                              right: 16, top: 8, bottom: 8),
-                          child: SizedBox(
-                            width: 280,
-                            child: Card(
-                              clipBehavior: Clip.antiAlias,
-                              elevation: 4,
-                              child: InkWell(
-                                onTap: () => context
-                                    .push('/articles/${article.id.toString()}'),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (article.media.isNotEmpty)
-                                      Image.network(
-                                        article.media.first.url,
-                                        height: 160,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            article.title,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleLarge,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            article.content,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium,
-                                            maxLines: 3,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (error, stack) =>
-                        Center(child: Text('Error: ${error.toString()}')),
-                  ),
-                ),
+                child: _FeaturedArticlesSection(),
               ),
             ],
             SliverToBoxAdapter(
@@ -397,6 +328,39 @@ class _ArticlesScreenState extends ConsumerState<ArticlesScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FeaturedArticlesSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final featuredArticles = ref.watch(featuredArticlesProvider);
+
+    return featuredArticles.when(
+      data: (articles) => SizedBox(
+        height: 400,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: articles.length,
+          itemBuilder: (context, index) {
+            final article = articles[index];
+            return Container(
+              width: MediaQuery.of(context).size.width * 0.8,
+              margin: const EdgeInsets.only(right: 16),
+              child: ArticleCard(
+                article: article,
+                showActions: false,
+              ),
+            );
+          },
+        ),
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Text('Error loading featured articles: $error'),
       ),
     );
   }

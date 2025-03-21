@@ -131,10 +131,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _nameController,
                         textInputAction: TextInputAction.next,
+                        style: TextStyle(color: Colors.black),
                         decoration: AuthConstants.textFieldDecoration(
                           labelText: "Name",
                           hintText: "Your Name",
                           icon: Icons.person,
+                        ).copyWith(
+                          hintStyle: const TextStyle(color: Colors.black54),
+                          labelStyle: const TextStyle(color: kPrimaryColor),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -147,10 +151,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _emailController,
                         textInputAction: TextInputAction.next,
+                        style: TextStyle(color: Colors.black),
                         decoration: AuthConstants.textFieldDecoration(
                           labelText: "Email",
                           hintText: "Email",
                           icon: Icons.email,
+                        ).copyWith(
+                          hintStyle: const TextStyle(color: Colors.black54),
+                          labelStyle: const TextStyle(color: kPrimaryColor),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -164,10 +172,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
+                        style: TextStyle(color: Colors.black),
                         decoration: AuthConstants.textFieldDecoration(
                           labelText: "Phone Number",
                           hintText: "Phone Number",
                           icon: Icons.phone,
+                        ).copyWith(
+                          hintStyle: const TextStyle(color: Colors.black54),
+                          labelStyle: const TextStyle(color: kPrimaryColor),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -183,6 +195,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        style: TextStyle(color: Colors.black),
                         decoration: InputDecoration(
                           labelText: "Password",
                           labelStyle: const TextStyle(
@@ -240,10 +253,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _passwordConfirmationController,
                         obscureText: true,
+                        style: TextStyle(color: Colors.black),
                         decoration: AuthConstants.textFieldDecoration(
                           labelText: "Confirm Password",
                           hintText: "Confirm Password",
                           icon: Icons.lock,
+                        ).copyWith(
+                          hintStyle: const TextStyle(color: Colors.black54),
+                          labelStyle: const TextStyle(color: kPrimaryColor),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -262,19 +279,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _register,
                           style: AuthConstants.elevatedButtonStyle(),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: _isLoading 
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        "SIGN UP",
+                                        style: AuthConstants.buttonTextStyle,
+                                      ),
+                                    ],
+                                  )
+                                : const Text(
+                                    "SIGN UP",
+                                    style: AuthConstants.buttonTextStyle,
                                   ),
-                                )
-                              : const Text(
-                                  "SIGN UP",
-                                  style: AuthConstants.buttonTextStyle,
-                                ),
+                          ),
                         ),
                       ),
                     ],

@@ -84,7 +84,32 @@ class SearchService {
         },
       );
       final data = ApiConfig.extractData(response);
-      return (data as List).map((json) => Book.fromJson(json)).toList();
+      
+      // Handle both List and Map responses
+      if (data is List) {
+        return data.map((json) => Book.fromJson(json)).toList();
+      } else if (data is Map<String, dynamic>) {
+        // Try to extract books from the map
+        if (data.containsKey('books') && data['books'] is List) {
+          return (data['books'] as List).map((json) => Book.fromJson(json)).toList();
+        } else {
+          // If no 'books' key, try to convert the whole map to a list of books
+          List<Book> books = [];
+          data.forEach((key, value) {
+            if (value is Map<String, dynamic>) {
+              try {
+                books.add(Book.fromJson(value));
+              } catch (e) {
+                print('Error parsing book from map entry: $e');
+              }
+            }
+          });
+          return books;
+        }
+      }
+      
+      // Fallback to empty list if data is neither List nor Map
+      return [];
     } catch (e) {
       print('Error fetching books by category: $e');
       return [];
@@ -103,9 +128,34 @@ class SearchService {
         },
       );
       final data = ApiConfig.extractData(response);
-      return (data as List).map((json) => Book.fromJson(json)).toList();
-    } catch (e) {
-      print('Error fetching books by author: $e');
+      if (data == null) return [];
+
+      List<dynamic> booksList;
+      if (data is Map && data.containsKey('books')) {
+        booksList = data['books'] as List;
+      } else if (data is List) {
+        booksList = data;
+      } else {
+        return [];
+      }
+
+      return booksList.map((json) {
+        try {
+          if (json is Map<String, dynamic>) {
+            return Book.fromJson(json);
+          } else if (json is Map) {
+            return Book.fromJson(Map<dynamic, dynamic>.from(json));
+          }
+        } catch (e) {
+          print('Error parsing individual book: $e');
+          print('Problematic book data: $json');
+        }
+        return null;
+      }).whereType<Book>().toList();
+
+    } catch (e, stack) {
+      print('Error fetching recent books: $e');
+      print('Stack trace: $stack');
       return [];
     }
   }
@@ -138,7 +188,7 @@ class SearchService {
           if (json is Map<String, dynamic>) {
             return Book.fromJson(json);
           } else if (json is Map) {
-            return Book.fromJson(Map<String, dynamic>.from(json));
+            return Book.fromJson(Map<dynamic, dynamic>.from(json));
           }
         } catch (e) {
           print('Error parsing individual book: $e');

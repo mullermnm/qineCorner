@@ -1,3 +1,5 @@
+import 'package:qine_corner/core/models/category.dart';
+
 import 'author.dart';
 
 class Book {
@@ -7,7 +9,7 @@ class Book {
   final String description;
   final String coverUrl;
   final double? rating;  // Make rating optional
-  final List<String> categories; // List of category IDs
+  final List<Category> categories; // List of category IDs
   final DateTime publishedAt;
   final String filePath; // Path to the PDF file
 
@@ -24,13 +26,42 @@ class Book {
   });
 
   // Add fromJson constructor for future API integration
-  factory Book.fromJson(Map<String, dynamic> json) {
+  factory Book.fromJson(Map<dynamic, dynamic> json) {
     try {
       // Handle categories that might be integers, strings, or null
-      List<String> parseCategories(dynamic categories) {
+      List<Category> parseCategories(dynamic categories) {
         if (categories == null) return [];
         if (categories is List) {
-          return categories.map((category) => category?.toString() ?? '').where((id) => id.isNotEmpty).toList();
+          return categories.map((category) {
+            // Handle different category formats
+            if (category is Map) {
+              // Create a Category from the map
+              return Category(
+                id: category['id']?.toString() ?? '',
+                name: category['name']?.toString() ?? 'Unknown',
+                icon: category['icon']?.toString() ?? 'category',
+                booksCount: category['books_count'] ?? 0,
+              );
+            } else if (category is String) {
+              // Create a basic Category from a string ID or name
+              return Category(
+                id: category,
+                name: category,
+                icon: 'category',
+                booksCount: 0,
+              );
+            } else if (category is Category) {
+              // Already a Category object
+              return category;
+            }
+            // Default fallback
+            return Category(
+              id: '0',
+              name: 'Unknown',
+              icon: 'category',
+              booksCount: 0,
+            );
+          }).toList();
         }
         return [];
       }
@@ -79,7 +110,7 @@ class Book {
     String? description,
     String? coverUrl,
     double? rating,
-    List<String>? categories,
+    List<Category>? categories,
     DateTime? publishedAt,
     String? filePath,
   }) {

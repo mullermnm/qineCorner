@@ -1,15 +1,21 @@
+import '../api/api_config.dart';
+
 class AppConfig {
-  // Base URL for API
-  static const String apiBaseUrl = 'http://192.168.137.1:8000'; // Current server IP
-  // static const String apiBaseUrl = 'http://10.0.2.2:8000'; // For Android Emulator
-  // static const String apiBaseUrl = 'http://localhost:8000'; // For Web
-  // static const String apiBaseUrl = 'http://192.168.137.31:8000'; // For Physical Device
+  // Base URL from ApiConfig
+  static String get apiBaseUrl => ApiConfig.baseUrl;
 
   // Helper method to get full URL for assets
   static String getAssetUrl(String? path) {
     if (path == null || path.isEmpty) return '';
-    if (path.startsWith('http')) return path; // Return as is if already a full URL
+    if (path.startsWith('http')) return path;
     return '$apiBaseUrl$path';
+  }
+
+  // Helper method specifically for PDF files
+  static String getPdfUrl(String filePath) {
+    if (filePath.startsWith('http')) return filePath;
+    final cleanPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+    return '$apiBaseUrl/$cleanPath';
   }
 
   // API endpoints

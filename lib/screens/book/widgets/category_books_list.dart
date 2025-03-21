@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qine_corner/core/models/category.dart';
 import 'package:qine_corner/screens/home/widgets/home_content.dart';
 import '../../../core/models/book.dart';
 import '../../../core/providers/books_provider.dart';
@@ -8,75 +9,73 @@ import '../../../screens/error/widgets/animated_error_widget.dart';
 import '../../../common/widgets/loading_animation.dart';
 import 'book_card.dart';
 
-class CategoryBooksList extends ConsumerWidget {
+class CategoryBooksList extends ConsumerStatefulWidget {
   final String categoryId;
-  final String title;
 
   const CategoryBooksList({
     super.key,
     required this.categoryId,
-    required this.title,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(booksProvider).books.when(
-          data: (books) {
-            if (books.isEmpty) {
-              return const SizedBox.shrink();
-            }
+  ConsumerState<CategoryBooksList> createState() => _CategoryBooksListState();
+}
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          // Navigate to category view
-                        },
-                        child: const Text('See All'),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 280,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: books.length,
-                    itemBuilder: (context, index) {
-                      final book = books[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: SizedBox(
-                          width: 160,
-                          child: BookCard(
-                            book: book,
-                            onTap: () =>
-                                context.push('/book/${book.id}', extra: book),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
+class _CategoryBooksListState extends ConsumerState<CategoryBooksList> {
+  String? _lastFilteredCategory;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Delay provider update until after the build cycle
+    Future.microtask(() => _filterBooks(widget.categoryId));
+  }
+  
+  @override
+  void didUpdateWidget(CategoryBooksList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.categoryId != oldWidget.categoryId) {
+      // Delay provider update until after the build cycle
+      Future.microtask(() => _filterBooks(widget.categoryId));
+    }
+  }
+  
+  void _filterBooks(String categoryId) {
+    if (_lastFilteredCategory != categoryId) {
+      _lastFilteredCategory = categoryId;
+      // Only filter if we haven't already filtered for this category
+      ref.read(booksProvider.notifier).filterByCategory(categoryId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Watch for changes in the book state
+    final booksAsync = ref.watch(booksProvider);
+    
+    return booksAsync.books.when(
+      loading: () => const LoadingAnimation(),
+      error: (error, stack) => AnimatedErrorWidget(
+        message: 'Failed to load books for this category. Please try again.',
+        onRetry: () {
+          ref.invalidate(booksProvider);
+          _filterBooks(widget.categoryId);
+        },
+      ),
+      data: (books) {
+        if (books.isEmpty) {
+          return const Center(
+            child: Text('No books found in this category'),
+          );
+        }
+
+        return CategoryBooksListView(
+          books: books,
+          onLoadMore: () {
+            ref.read(booksProvider.notifier).loadMoreBooks();
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(
-            child: Text('Error: $error'),
-          ),
+        );
+      },
         );
   }
 }
@@ -118,8 +117,9 @@ class _CategoryBooksListViewState extends State<CategoryBooksListView> {
             return BookCard(
               book: book,
               onTap: () {
-                // Handle book tap
                 debugPrint('Tapped on book: ${book.title}');
+                // Navigate to book details
+                context.push('/book/${book.id}', extra: book);
               },
             );
           },

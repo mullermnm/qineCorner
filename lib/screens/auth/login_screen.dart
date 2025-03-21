@@ -130,10 +130,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
+                        style: TextStyle(color: Colors.black),
                         decoration: AuthConstants.textFieldDecoration(
                           labelText: "Phone",
                           hintText: "Your Phone",
                           icon: Icons.phone,
+                        ).copyWith(
+                          hintStyle: const TextStyle(color: Colors.black54),
+                          labelStyle: const TextStyle(color: kPrimaryColor),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -146,6 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        style: TextStyle(color: Colors.black),
                         decoration: InputDecoration(
                           prefixIcon: const Icon(
                             Icons.lock,
@@ -156,9 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             color: kPrimaryColor,
                           ),
                           hintText: 'Enter your password',
-                          hintStyle: const TextStyle(
-                            color: kPrimaryColor,
-                          ),
+                          hintStyle: const TextStyle(color: Colors.black54),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
@@ -204,19 +207,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _login,
                           style: AuthConstants.elevatedButtonStyle(),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 1),
+                            child: _isLoading
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        "LOGIN",
+                                        style: AuthConstants.buttonTextStyle,
+                                      ),
+                                    ],
+                                  )
+                                : const Text(
+                                    "LOGIN",
+                                    style: AuthConstants.buttonTextStyle,
                                   ),
-                                )
-                              : const Text(
-                                  "LOGIN",
-                                  style: AuthConstants.buttonTextStyle,
-                                ),
+                          ),
                         ),
                       ),
                       if (_error != null) ...[

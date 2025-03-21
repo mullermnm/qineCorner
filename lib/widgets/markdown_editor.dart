@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
 
 class MarkdownEditor extends StatefulWidget {
   final TextEditingController controller;
   final int? minLines;
   final int? maxLines;
-  final String? Function(String?)? validator;
 
   const MarkdownEditor({
     super.key,
     required this.controller,
     this.minLines,
     this.maxLines,
-    this.validator,
   });
 
   @override
@@ -20,101 +19,83 @@ class MarkdownEditor extends StatefulWidget {
 }
 
 class _MarkdownEditorState extends State<MarkdownEditor> {
-  bool _isPreview = false;
+  late QuillController _controller;
+  final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = QuillController.basic();
+    
+    // Listen to changes and update the text controller
+    _controller.addListener(() {
+      final delta = _controller.document.toDelta();
+      widget.controller.text = delta.toJson().toString();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return SizedBox(
+      height: 400,
+      child: Column(
       children: [
-        Row(
-          children: [
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  label: Text('Edit'),
-                  icon: Icon(Icons.edit),
-                ),
-                ButtonSegment(
-                  value: true,
-                  label: Text('Preview'),
-                  icon: Icon(Icons.visibility),
-                ),
-              ],
-              selected: {_isPreview},
-              onSelectionChanged: (value) {
-                setState(() {
-                  _isPreview = value.first;
-                });
-              },
+          QuillSimpleToolbar(
+            controller: _controller,
+            config: QuillSimpleToolbarConfig(
+              embedButtons: FlutterQuillEmbeds.toolbarButtons(),
+              showClearFormat: true,
+              showBoldButton: true,
+              showItalicButton: true,
+              showSmallButton: false,
+              showUnderLineButton: true,
+              showStrikeThrough: true,
+              showInlineCode: false,
+              showColorButton: false,
+              showBackgroundColorButton: false,
+              showHeaderStyle: true,
+              showLink: true,
+              showQuote: true,
+              showIndent: true,
+              showListNumbers: true,
+              showListBullets: true,
+              showCodeBlock: false,
+              showSearchButton: false,
+              showDirection: false,
             ),
-            const Spacer(),
-            if (!_isPreview) ...[
-              IconButton(
-                icon: const Icon(Icons.format_bold),
-                onPressed: () => _insertMarkdown('**', '**'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.format_italic),
-                onPressed: () => _insertMarkdown('_', '_'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.link),
-                onPressed: () => _insertMarkdown('[', '](url)'),
-              ),
-              IconButton(
-                icon: const Icon(Icons.image),
-                onPressed: () => _insertMarkdown('![alt text](', ')'),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (_isPreview)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).dividerColor),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            constraints: const BoxConstraints(minHeight: 200),
-            child: MarkdownBody(
-              data: widget.controller.text,
-              selectable: true,
-            ),
-          )
-        else
-          TextFormField(
-            controller: widget.controller,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: 'Write your article in markdown...',
-            ),
-            maxLines: widget.maxLines,
-            minLines: widget.minLines,
-            validator: widget.validator,
           ),
-      ],
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).dividerColor),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              padding: const EdgeInsets.all(8),
+              child: QuillEditor(
+                controller: _controller,
+                focusNode: _focusNode,
+                scrollController: _scrollController,
+                config: QuillEditorConfig(
+                  placeholder: 'Write your article...',
+                  autoFocus: false,
+                  expands: false,
+                  padding: const EdgeInsets.all(8),
+                  embedBuilders: [...FlutterQuillEmbeds.editorBuilders()],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  void _insertMarkdown(String prefix, String suffix) {
-    final text = widget.controller.text;
-    final selection = widget.controller.selection;
-    final middle = selection.textInside(text);
-
-    final newText = text.replaceRange(
-      selection.start,
-      selection.end,
-      '$prefix$middle$suffix',
-    );
-
-    widget.controller.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection(
-        baseOffset: selection.baseOffset + prefix.length,
-        extentOffset: selection.extentOffset + prefix.length,
-      ),
-    );
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 }

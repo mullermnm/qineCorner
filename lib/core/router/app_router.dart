@@ -30,6 +30,7 @@ import 'package:qine_corner/screens/library/library_detail_screen.dart';
 import 'package:qine_corner/screens/notes/notes_overview_screen.dart';
 import 'package:qine_corner/screens/profile/profile_screen.dart';
 import 'package:qine_corner/screens/profile/edit_profile_screen.dart';
+import 'package:qine_corner/screens/settings/premium_upgrade_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../screens/home/home_screen.dart';
 import '../../screens/onboarding/onboarding_screen.dart';
@@ -42,6 +43,10 @@ import '../../screens/auth/register_screen.dart';
 import '../../screens/auth/verification_screen.dart';
 import '../../common/widgets/bottom_navigation/custom_buttom_navigation.dart';
 import '../../screens/book/user_book_requests_screen.dart';
+import '../../screens/about/about_screen.dart';
+import '../../screens/about/terms_screen.dart';
+import '../../screens/about/privacy_screen.dart';
+import '../../screens/payment/payment_screen.dart';
 
 class AppRouter {
   static final _rootNavigatorKey =
@@ -114,6 +119,7 @@ class AppRouter {
                       'book-clubs/:id/schedules/create',
                       '/articles/create',
                       '/upload-book',
+                      '/premium-upgrade',
                     ].any((path) => currentPath.startsWith(path));
 
                     if (authState == null) {
@@ -314,6 +320,33 @@ class AppRouter {
             GoRoute(
               path: '/my-requests',
               builder: (context, state) => const UserBookRequestsScreen(),
+            ),
+            GoRoute(
+              path: '/about',
+              builder: (context, state) => const AboutScreen(),
+            ),
+            GoRoute(
+              path: '/terms',
+              builder: (context, state) => const TermsScreen(),
+            ),
+            GoRoute(
+              path: '/privacy',
+              builder: (context, state) => const PrivacyScreen(),
+            ),
+            GoRoute(
+              path: '/premium-upgrade',
+              builder: (context, state) => const PremiumUpgradeScreen(),
+            ),
+            GoRoute(
+              path: '/payment',
+              builder: (context, state) {
+                final args = state.extra as Map<String, dynamic>;
+                return PaymentScreen(
+                  planName: args['planName'],
+                  planPrice: args['planPrice'],
+                  planPeriod: args['planPeriod'] ?? 'month',
+                );
+              },
             ),
           ],
         ),

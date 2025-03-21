@@ -10,8 +10,10 @@ class PrimaryButton extends StatelessWidget {
   final double borderRadius;
   final Color? backgroundColor;
   final Color? textColor;
+  final Color? iconColor;
   final TextStyle? textStyle;
   final IconData? icon;
+  final bool isLoading;
 
   const PrimaryButton({
     super.key,
@@ -23,8 +25,10 @@ class PrimaryButton extends StatelessWidget {
     this.borderRadius = 16,
     this.backgroundColor,
     this.textColor,
+    this.iconColor,
     this.textStyle,
     this.icon,
+    this.isLoading = false,
   });
 
   @override
@@ -47,18 +51,28 @@ class PrimaryButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 20),
+              Icon(icon, size: 20, color: iconColor,),
               const SizedBox(width: 8),
             ],
-            Text(
-              text,
-              style: textStyle ??
-                  TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: textColor ?? Colors.black,
-                  ),
-            ),
+            if (isLoading) ...[
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: textColor ?? Colors.black,
+                ),
+              ),
+            ] else ...[
+              Text(
+                text,
+                style: textStyle ??
+                    TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: textColor ?? Colors.black,
+                    ),
+              ),
+            ],
           ],
         ),
       ),
