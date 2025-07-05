@@ -8,6 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qine_corner/core/services/chapa_service.dart';
+import 'package:qine_corner/screens/payment/subscription_success_screen.dart';
+import 'package:qine_corner/core/providers/premium_provider.dart';
+import 'package:qine_corner/features/subscription/providers/subscription_provider.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   final String planName;
@@ -15,8 +18,8 @@ class PaymentScreen extends ConsumerStatefulWidget {
   final String planPeriod;
 
   const PaymentScreen({
-    super.key, 
-    required this.planName, 
+    super.key,
+    required this.planName,
     required this.planPrice,
     required this.planPeriod,
   });
@@ -41,61 +44,67 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   // Process payment with Chapa
   void _processPayment() {
     setState(() => _isProcessing = true);
-    
+
     try {
       print("DEBUG: Starting custom payment process");
-      
+
       // Extract amount from price
       final amount = widget.planPrice.replaceAll(RegExp(r'[^0-9.]'), '');
-      
+
       // Generate unique transaction reference
       final txRef = _generateTxRef();
-      
+
       // Get user info with better email validation
       final authState = ref.read(authNotifierProvider).valueOrNull;
-      
+
       // Ensure we have a valid, properly formatted email
       String userEmail = (authState?.user?.email ?? '').trim();
-      if (userEmail.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(userEmail)) {
-        userEmail = 'customer@example.com'; // Standard fallback email that should pass validation
+      if (userEmail.isEmpty ||
+          !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(userEmail)) {
+        userEmail =
+            'customer@example.com'; // Standard fallback email that should pass validation
       }
-      
+
       print("DEBUG: Using email: $userEmail");
-      
+
       String? userPhone = authState?.user?.phone;
       String firstName = authState?.user?.name?.split(' ').first ?? 'Qine';
       String lastName = authState?.user?.name?.split(' ').last ?? 'User';
-      
+
       print("DEBUG: Custom payment - initializing transaction");
-      
+
       // Initialize transaction with Chapa API
       ChapaService.initializeTransaction(
         amount: amount,
+        email: userEmail,
         firstName: firstName,
         lastName: lastName,
         phone: userPhone ?? '0911111111',
         txRef: txRef,
         callbackUrl: ChapaConfig.callbackUrl,
+        returnUrl: ChapaConfig.returnUrl,
         title: 'Payment for ${widget.planName}',
-        description: 'Subscription payment for ${widget.planName} (${widget.planPeriod})',
+        description:
+            'Subscription payment for ${widget.planName} (${widget.planPeriod})',
       ).then((response) {
         if (response['status'] == 'success') {
           final checkoutUrl = response['data']['checkout_url'];
           print("DEBUG: Opening checkout URL: $checkoutUrl");
-          
+
           // Open checkout URL in WebView - pass txRef for verification
           ChapaService.openPaymentPage(
             context: context,
             checkoutUrl: checkoutUrl,
-            txRef: txRef, // Pass txRef to the improved method
+            txRef: txRef,
             onComplete: (isSuccess) {
-              setState(() => _isProcessing = false);
-              
               if (isSuccess) {
-                // Call your backend to update user to premium
+                // Payment verified, now update user status and navigate
                 _updateUserToPremium(txRef);
               } else {
-                _showPaymentErrorDialog('Payment was not completed');
+                // Stop processing and show error
+                setState(() => _isProcessing = false);
+                _showPaymentErrorDialog(
+                    'Payment was not completed or failed verification.');
               }
             },
           );
@@ -115,87 +124,74 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 
-  // Add method to update user to premium
-  void _updateUserToPremium(String txRef) {
-    // Show processing dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Updating Subscription'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text('Activating your ${widget.planName} subscription...'),
-          ],
-        ),
-      ),
-    );
-    
-    // TODO: Call your backend API to upgrade the user
-    // Example:
-    // YourApiService.upgradeUserToPremium(
-    //   planName: widget.planName,
-    //   planPeriod: widget.planPeriod,
-    //   transactionRef: txRef,
-    // ).then((response) {
-    //   Navigator.pop(context); // Close the processing dialog
-    //   if (response['success']) {
-    //     _showPaymentSuccessDialog();
-    //   } else {
-    //     _showPaymentErrorDialog('Error activating subscription');
-    //   }
-    // }).catchError((error) {
-    //   Navigator.pop(context); // Close the processing dialog
-    //   _showPaymentErrorDialog('Error activating subscription');
-    // });
-    
-    // For now, just show success dialog after a delay
-    Future.delayed(Duration(seconds: 2), () {
-      Navigator.pop(context); // Close the processing dialog
-      _showPaymentSuccessDialog();
-    });
+  // Add method to update user to premium with enhanced verification
+  void _updateUserToPremium(String txRef) async {
+    try {
+      print("DEBUG: Starting premium status update for txRef: $txRef");
+
+      // Show a processing dialog while verifying
+      _showVerificationDialog();
+
+      // Verify payment with our subscription service
+      final subscriptionNotifier =
+          ref.read(subscriptionNotifierProvider.notifier);
+      final status = await subscriptionNotifier.verifyPayment(txRef);
+
+      // Also update the legacy premium provider for backward compatibility
+      await ref.read(premiumProvider.notifier).upgradeToPremium();
+
+      // Hide the verification dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Stop the processing indicator
+      setState(() => _isProcessing = false);
+
+      // Navigate to the success screen
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => SubscriptionSuccessScreen(
+              planName: widget.planName,
+              planPeriod: widget.planPeriod,
+              txRef: txRef,
+              expiryDate: DateTime.now()
+                  .add(Duration(days: int.parse(widget.planPeriod))),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Log failure status
+      debugPrint("DEBUG: Premium status update failed: $e");
+
+      // Hide the verification dialog if showing
+      if (mounted) {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      }
+
+      setState(() => _isProcessing = false);
+      _showPaymentErrorDialog(
+          'Failed to update your subscription: ${e.toString()}. Please contact support.');
+    }
   }
 
-  void _showPaymentSuccessDialog() {
+  // Show verification dialog
+  void _showVerificationDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Payment Successful'),
+        title: const Text('Verifying Payment'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Thank you for subscribing to ${widget.planName}!',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Your premium features have been activated.',
-              textAlign: TextAlign.center,
-            ),
+          children: const [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Please wait while we verify your payment...'),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Close the payment screen and return to settings
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Done'),
-          ),
-        ],
       ),
     );
   }
@@ -243,17 +239,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Remove the automatic payment trigger to allow the UI to load first
-    // if (_selectedPaymentMethod == 1) {
-    //   WidgetsBinding.instance.addPostFrameCallback((_) {
-    //     if (!_isProcessing) {
-    //       _processPayment();
-    //     }
-    //   });
-    // }
-    
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Payment'),
@@ -265,12 +252,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isDark 
-                ? [AppColors.darkBackground, AppColors.darkBackground.withOpacity(0.8)]
+            colors: isDark
+                ? [
+                    AppColors.darkBackground,
+                    AppColors.darkBackground.withOpacity(0.8)
+                  ]
                 : [Colors.white, Colors.grey.shade50],
           ),
         ),
-        child: _isProcessing 
+        child: _isProcessing
             ? const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -289,18 +279,18 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     // Order Summary Card
                     _buildOrderSummary(isDark),
                     const SizedBox(height: 24),
-                    
+
                     // Payment Methods Title
                     Text(
                       'Select Payment Method',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Payment Method Options
                     _buildPaymentMethods(isDark),
                     const SizedBox(height: 32),
-                    
+
                     // Checkout Button
                     PrimaryButton(
                       onPressed: _processPayment,
@@ -374,14 +364,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     return Column(
       children: [
         _buildPaymentMethod(
-          index: 0, 
+          index: 0,
           name: 'Telebirr',
           logoAsset: 'assets/images/telebirr.jpeg',
           isDark: isDark,
         ),
         const SizedBox(height: 12),
         _buildPaymentMethod(
-          index: 1, 
+          index: 1,
           name: 'Chapa',
           logoAsset: 'assets/images/chappa.jpeg',
           isDark: isDark,
@@ -397,7 +387,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     required bool isDark,
   }) {
     final isSelected = _selectedPaymentMethod == index;
-    
+
     return InkWell(
       onTap: () => setState(() => _selectedPaymentMethod = index),
       borderRadius: BorderRadius.circular(12),
@@ -407,9 +397,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           color: isDark ? AppColors.darkSurfaceBackground : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected 
-                ? Theme.of(context).primaryColor 
-                : isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : isDark
+                    ? Colors.grey.shade800
+                    : Colors.grey.shade200,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -444,8 +436,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    index == 0 
-                        ? 'Pay directly with Telebirr' 
+                    index == 0
+                        ? 'Pay directly with Telebirr'
                         : 'Multiple payment options',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -465,4 +457,4 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       ),
     );
   }
-} 
+}

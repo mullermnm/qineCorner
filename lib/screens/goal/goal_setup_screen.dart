@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/providers/reading_goal_provider.dart';
 import '../../core/models/reading_goal.dart';
+import '../../screens/home/home_screen.dart';
 
 class GoalSetupScreen extends ConsumerStatefulWidget {
   final bool isOnboarding;
@@ -22,6 +24,7 @@ class _GoalSetupScreenState extends ConsumerState<GoalSetupScreen> {
   late bool _notificationsEnabled;
   late TimeOfDay _notificationTime;
   bool _isInitialized = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -71,24 +74,40 @@ class _GoalSetupScreenState extends ConsumerState<GoalSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Set Reading Goal',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).primaryColor,
-            letterSpacing: 0.5,
+    // Remove the ref.listen as it's not working properly for navigation
+    // We'll handle navigation directly in the button press
+
+    return WillPopScope(
+      // Handle back button press to navigate back instead of exiting
+      onWillPop: () async {
+        if (widget.isOnboarding) {
+          // If in onboarding, go to home instead of exiting
+          context.go('/home');
+          return false;
+        }
+        return true; // Allow normal back navigation
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Set Reading Goal',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).primaryColor,
+              letterSpacing: 0.5,
+            ),
           ),
+          leading: !widget.isOnboarding
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go('/home'),
+                ),
         ),
-        leading: !widget.isOnboarding
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).pop(),
-              )
-            : null,
-      ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -208,32 +227,68 @@ class _GoalSetupScreenState extends ConsumerState<GoalSetupScreen> {
                 if (!widget.isOnboarding) const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () async {
-                      final goal = ReadingGoal(
-                        dailyMinutes: _goalMinutes.round(),
-                        notificationsEnabled: _notificationsEnabled,
-                        notificationTime: _formatTimeOfDay(_notificationTime),
-                      );
-                      await ref
-                          .read(readingGoalProvider.notifier)
-                          .saveGoal(goal);
+                    onPressed: _isSaving
+                        ? null
+                        : () async {
+                            setState(() {
+                              _isSaving = true;
+                            });
 
-                      if (mounted) {
-                        Fluttertoast.showToast(
-                          msg: 'Reading goal saved successfully!',
-                          toastLength: Toast.LENGTH_SHORT,
-                          gravity: ToastGravity.BOTTOM,
-                          backgroundColor: Colors.green,
-                          textColor: Colors.white,
-                        );
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('last_route');
 
-                        if (widget.isOnboarding) {
-                          context.go('/home');
-                        } else {
-                          Navigator.of(context).pop();
-                        }
-                      }
-                    },
+                            final goal = ReadingGoal(
+                              dailyMinutes: _goalMinutes.round(),
+                              notificationsEnabled: _notificationsEnabled,
+                              notificationTime:
+                                  _formatTimeOfDay(_notificationTime),
+                            );
+
+                            await ref
+                                .read(readingGoalProvider.notifier)
+                                .saveGoal(goal);
+
+                            if (!mounted) return;
+
+                            setState(() {
+                              _isSaving = false;
+                            });
+
+                            // Show success toast for all cases
+                            Fluttertoast.showToast(
+                              msg: 'Reading goal saved successfully!',
+                              toastLength: Toast.LENGTH_SHORT,
+                              gravity: ToastGravity.BOTTOM,
+                              backgroundColor: Colors.green,
+                              textColor: Colors.white,
+                            );
+                            
+                            if (widget.isOnboarding) {
+                              // Add debug print to track navigation
+                              print('DEBUG: Navigating to home from goal setup');
+                              
+                              // First try to navigate using GoRouter
+                              try {
+                                context.go('/home');
+                              } catch (e) {
+                                print('DEBUG: GoRouter navigation error: $e');
+                                
+                                // Fallback to Navigator if GoRouter fails
+                                try {
+                                  Navigator.of(context).pushReplacementNamed('/home');
+                                } catch (e) {
+                                  print('DEBUG: Navigator fallback error: $e');
+                                  
+                                  // Last resort: use Navigator.pushReplacement with MaterialPageRoute
+                                  Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                                  );
+                                }
+                              }
+                            } else {
+                              Navigator.of(context).pop();
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: Theme.of(context).primaryColor,
@@ -241,14 +296,23 @@ class _GoalSetupScreenState extends ConsumerState<GoalSetupScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      widget.isOnboarding ? 'Get Started' : 'Save Goal',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            widget.isOnboarding ? 'Get Started' : 'Save Goal',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -256,6 +320,6 @@ class _GoalSetupScreenState extends ConsumerState<GoalSetupScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

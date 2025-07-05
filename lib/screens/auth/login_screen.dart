@@ -59,7 +59,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           );
         } else {
-          // Return to previous screen
+          // Navigate to home screen
           context.go('/home');
         }
       }
@@ -68,6 +68,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() {
           _error = e.toString();
         });
+        
+        // Show error in snackbar for better visibility
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -210,23 +218,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 1),
                             child: _isLoading
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        "LOGIN",
-                                        style: AuthConstants.buttonTextStyle,
-                                      ),
-                                    ],
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 3,
+                                    ),
                                   )
                                 : const Text(
                                     "LOGIN",
@@ -255,7 +253,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: TextStyle(color: AuthConstants.kPrimaryColor),
                   ),
                   GestureDetector(
-                    onTap: () => context.go('/register'),
+                    onTap: () => context.push('/register'),
                     child: const Text(
                       "Sign Up",
                       style: AuthConstants.linkTextStyle,

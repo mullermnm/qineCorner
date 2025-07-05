@@ -5,6 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:qine_corner/common/widgets/loading_animation.dart';
 import 'package:qine_corner/core/models/article.dart';
 import 'package:qine_corner/core/models/comment.dart';
+import 'package:qine_corner/features/quotes/domain/models/quote.dart';
+import 'package:qine_corner/features/quotes/presentation/screens/quote_share_screen.dart';
+import 'package:qine_corner/screens/notes/widgets/add_note_dialog.dart';
+import 'package:qine_corner/core/providers/notes_provider.dart';
+import 'package:qine_corner/core/models/note.dart';
 import 'package:qine_corner/core/providers/article_provider.dart';
 import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/screens/error/widgets/animated_error_widget.dart';
@@ -45,7 +50,9 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       await ref.refresh(articleDetailsProvider(widget.articleId).future);
       // Refresh comments
       if (mounted) {
-        await ref.read(commentProvider(widget.articleId).notifier).loadComments();
+        await ref
+            .read(commentProvider(widget.articleId).notifier)
+            .loadComments();
       }
     } catch (e) {
       if (mounted) {
@@ -60,20 +67,21 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     if (_commentController.text.trim().isEmpty) return;
 
     try {
-      final commentNotifier = ref.read(commentProvider(widget.articleId).notifier);
-      
+      final commentNotifier =
+          ref.read(commentProvider(widget.articleId).notifier);
+
       // Debug log
       print('Submitting comment with parentId: $_replyToId');
-      
+
       await commentNotifier.addComment(
         _commentController.text,
         parentId: _replyToId,
       );
-      
+
       if (mounted) {
         _commentController.clear();
         setState(() => _replyToId = null);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Comment added successfully'),
@@ -103,6 +111,11 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       appBar: AppBar(
         title: const Text('Article'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.format_quote),
+            onPressed: () => context.push('/quotes/manual-entry'),
+            tooltip: 'Enter Quote Manually',
+          ),
           if (currentUser != null) _buildOptionsMenu(),
         ],
       ),
@@ -118,7 +131,12 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 children: [
-                  ArticleCard(article: article, showActions: true),
+                  ArticleCard(
+                    article: article,
+                    showActions: true,
+                    onTextSelected: (selectedText) =>
+                        _onTextSelected(selectedText, article),
+                  ),
                   const Divider(),
                   _buildCommentSection(),
                 ],
@@ -137,18 +155,20 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
 
   Widget _buildOptionsMenu() {
     return PopupMenuButton<String>(
-                onSelected: (value) async {
+      onSelected: (value) async {
         switch (value) {
           case 'edit':
             context.push('/articles/${widget.articleId}/edit');
             break;
           case 'delete':
-            await ref.read(articleProvider.notifier).deleteArticle(widget.articleId);
+            await ref
+                .read(articleProvider.notifier)
+                .deleteArticle(widget.articleId);
             if (mounted) context.pop();
             break;
-                  }
-                },
-                itemBuilder: (context) => [
+        }
+      },
+      itemBuilder: (context) => [
         const PopupMenuItem(value: 'edit', child: Text('Edit')),
         const PopupMenuItem(value: 'delete', child: Text('Delete')),
       ],
@@ -178,7 +198,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                   child: TextField(
                     controller: _commentController,
                     decoration: InputDecoration(
-                      hintText: _replyToId != null 
+                      hintText: _replyToId != null
                           ? 'Write a reply...'
                           : 'Write a comment...',
                       border: const OutlineInputBorder(),
@@ -205,30 +225,33 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
               final comment = comments[index];
               return CommentItem(
                 comment: comment,
-                onLike: (id) => ref.read(commentProvider(widget.articleId).notifier)
+                onLike: (id) => ref
+                    .read(commentProvider(widget.articleId).notifier)
                     .likeComment(id),
-                onUnlike: (id) => ref.read(commentProvider(widget.articleId).notifier)
+                onUnlike: (id) => ref
+                    .read(commentProvider(widget.articleId).notifier)
                     .unlikeComment(id),
                 onReply: _setupReply,
                 onDelete: (id) async {
                   // Add delete confirmation dialog
                   final shouldDelete = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
                       title: const Text('Delete Comment'),
-                      content: const Text('Are you sure you want to delete this comment?'),
-                        actions: [
-                          TextButton(
+                      content: const Text(
+                          'Are you sure you want to delete this comment?'),
+                      actions: [
+                        TextButton(
                           onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
                           onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
 
                   if (shouldDelete == true && mounted) {
                     await ref.read(articleServiceProvider).deleteComment(id);
@@ -260,7 +283,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
 
   Widget _buildInteractionButtons(Article article) {
     return Container(
-            padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -271,7 +294,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
+        children: [
           _buildInteractionButton(
             icon: article.isLiked ? Icons.favorite : Icons.favorite_border,
             label: '${article.likes ?? 0}',
@@ -287,10 +310,10 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
             icon: Icons.share_outlined,
             label: 'Share',
             onTap: () => _shareArticle(article),
-                ),
-              ],
-            ),
-          );
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildInteractionButton({
@@ -317,9 +340,13 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
   Future<void> _handleLike(Article article) async {
     try {
       if (article.isLiked) {
-        await ref.read(articleProvider.notifier).unlikeArticle(article.id.toString());
+        await ref
+            .read(articleProvider.notifier)
+            .unlikeArticle(article.id.toString());
       } else {
-        await ref.read(articleProvider.notifier).likeArticle(article.id.toString());
+        await ref
+            .read(articleProvider.notifier)
+            .likeArticle(article.id.toString());
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -337,7 +364,8 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
   }
 
   Widget _buildReplyingTo() {
-    if (_replyToId == null || _replyToUsername == null) return const SizedBox.shrink();
+    if (_replyToId == null || _replyToUsername == null)
+      return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -367,5 +395,55 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       // Focus the text field
       FocusScope.of(context).requestFocus(FocusNode());
     });
+  }
+
+  void _onTextSelected(String? text, Article article) {
+    if (text != null && text.isNotEmpty) {
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.note_add),
+                title: const Text('Add Note'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showDialog(
+                    context: context,
+                    builder: (context) => AddNoteDialog(
+                      bookTitle: article.title,
+                      currentPage:
+                          0, // Articles don't have pages, use 0 or handle differently
+                      highlightedText: text,
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share Quote'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final authState = ref.read(authNotifierProvider).valueOrNull;
+                  final userName = authState?.user?.name ?? 'Anonymous';
+                  final quote = Quote(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    text: text,
+                    bookTitle: article.title,
+                    authorName:
+                        article.author?.name, // Assuming article has an author
+                    userName: userName,
+                    createdAt: DateTime.now(),
+                  );
+                  context.push('/quotes/share', extra: quote);
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }

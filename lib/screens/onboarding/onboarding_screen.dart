@@ -28,7 +28,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
     OnboardingPage(
       title: 'Discover Books',
-      description: 'Explore a vast collection of both Amharic and English books.',
+      description:
+          'Explore a vast collection of both Amharic and English books.',
       animationPath: 'assets/animations/onboarding_2.json',
     ),
     OnboardingPage(
@@ -57,11 +58,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finishOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('first_time', false);
+    await prefs.remove('last_route'); // Prevent redirecting back to onboarding
 
     if (!mounted) return;
 
     if (context.mounted) {
-      context.go('/home');
+      // After onboarding, the user should set up their reading goal.
+      context.go('/goal-setup');
     }
   }
 
@@ -82,7 +85,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPressed: _finishOnboarding,
                 text: 'Skip',
                 outlined: false,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 height: 40,
                 textColor: isDark
                     ? AppColors.darkTextPrimary
@@ -149,7 +153,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               children: List.generate(
                                 _pages.length,
                                 (index) => Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 4),
                                   width: 8,
                                   height: 8,
                                   decoration: BoxDecoration(

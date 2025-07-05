@@ -17,6 +17,7 @@ class ArticleCard extends ConsumerStatefulWidget {
   final VoidCallback? onSave;
   final VoidCallback? onShare;
   final bool showActions;
+  final Function(String?)? onTextSelected;
 
   const ArticleCard({
     super.key,
@@ -25,6 +26,7 @@ class ArticleCard extends ConsumerStatefulWidget {
     this.onSave,
     this.onShare,
     this.showActions = true,
+    this.onTextSelected,
   });
 
   @override
@@ -101,7 +103,8 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
               // Fallback to direct conversion
               deltaList = _manuallyParseDelta(content);
             }
-          } catch (e) {
+          }
+          catch (e) {
             print('Content processing error: $e');
             deltaList = [{"insert": contentJson.toString()}, {"insert": "\n"}];
           }
@@ -117,6 +120,13 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
         document: doc,
         selection: const TextSelection.collapsed(offset: 0),
       );
+      _quillController.addListener(() {
+        if (widget.onTextSelected != null) {
+          final selection = _quillController.selection;
+          final selectedText = _quillController.document.toPlainText().substring(selection.baseOffset, selection.extentOffset);
+          widget.onTextSelected!(selectedText);
+        }
+      });
     } catch (e) {
       print('Error parsing content: $e');
       final doc = Document()..insert(0, 'Error displaying content')..insert(1, '\n');
@@ -339,8 +349,8 @@ class _ArticleCardState extends ConsumerState<ArticleCard> {
                 ),
                 scrollable: false,
                 showCursor: false,
-                enableInteractiveSelection: false, // Disable text selection
-                disableClipboard: true, // Prevent clipboard operations
+                enableInteractiveSelection: true, // Enable text selection
+                disableClipboard: false, // Allow clipboard operations
               ),
             ),
           ),

@@ -6,12 +6,14 @@ import '../../../core/models/note.dart';
 class AddNoteDialog extends ConsumerStatefulWidget {
   final String bookTitle;
   final int currentPage;
+  final String? highlightedText;
 
   const AddNoteDialog({
-    Key? key,
+    super.key,
     required this.bookTitle,
     required this.currentPage,
-  }) : super(key: key);
+    this.highlightedText,
+  });
 
   @override
   ConsumerState<AddNoteDialog> createState() => _AddNoteDialogState();
@@ -22,6 +24,14 @@ class _AddNoteDialogState extends ConsumerState<AddNoteDialog> {
   final _tagController = TextEditingController();
   bool _isImportant = false;
   final List<String> _tags = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.highlightedText != null) {
+      _noteController.text = widget.highlightedText!;
+    }
+  }
 
   @override
   void dispose() {

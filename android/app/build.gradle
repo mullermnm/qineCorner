@@ -15,6 +15,12 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace = "com.example.qine_corner"
+    // Add namespace for image_gallery_saver plugin
+    // This is a workaround for a known issue with older versions of some plugins
+    // that do not declare their namespace.
+    // See https://github.com/flutter/flutter/issues/112601
+    // and https://developer.android.com/r/tools/upgrade-assistant/set-namespace
+    
     compileSdk = 34
     compileSdkVersion flutter.compileSdkVersion
     compileOptions {

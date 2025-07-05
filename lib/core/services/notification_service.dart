@@ -30,54 +30,95 @@ class NotificationService {
     required String time,
     required int dailyMinutes,
   }) async {
-    final timeParts = time.split(':');
-    final hour = int.parse(timeParts[0]);
-    final minute = int.parse(timeParts[1]);
+    try {
+      int hour = 20;
+      int minute = 0;
 
-    final now = DateTime.now();
-    var scheduledDate = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
-    );
+      try {
+        final timeParts = time.split(':');
+        if (timeParts.length == 2) {
+          hour = int.parse(timeParts[0]);
+          minute = int.parse(timeParts[1]);
+        }
+      } catch (e) {
+        print('Error parsing notification time: $e');
+        // Default to 8 PM if parsing fails
+      }
 
-    // If the time has already passed today, schedule for tomorrow
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        hour,
+        minute,
+      );
+
+      // If the time has already passed today, schedule for tomorrow
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+
+      const androidDetails = AndroidNotificationDetails(
+        'reading_goals',
+        'Reading Goals',
+        channelDescription: 'Notifications for daily reading goals',
+        importance: Importance.high,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      // First cancel any existing notifications
+      await _notifications.cancel(0);
+
+      try {
+        // Try exact scheduling first
+        await _notifications.zonedSchedule(
+          0,
+          'Time to Read! 📚',
+          'Your goal is to read for $dailyMinutes minutes today.',
+          tz.TZDateTime.from(scheduledDate, tz.local),
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+        print('Scheduled exact notification for $scheduledDate');
+      } catch (e) {
+        print('Failed to schedule exact notification: $e');
+        print('Falling back to inexact scheduling');
+        
+        // Fallback to inexact scheduling
+        await _notifications.zonedSchedule(
+          0,
+          'Time to Read! 📚',
+          'Your goal is to read for $dailyMinutes minutes today.',
+          tz.TZDateTime.from(scheduledDate, tz.local),
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexact,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+      }
+    } catch (e) {
+      print('Error in scheduleReadingGoalReminder: $e');
+      // Don't rethrow to prevent breaking the goal saving flow
     }
-
-    const androidDetails = AndroidNotificationDetails(
-      'reading_goals',
-      'Reading Goals',
-      channelDescription: 'Notifications for daily reading goals',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _notifications.zonedSchedule(
-      0,
-      'Time to Read!',
-      'Your goal is to read for $dailyMinutes minutes today.',
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
   }
 
   Future<void> showGoalCompletedNotification() async {

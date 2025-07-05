@@ -18,6 +18,31 @@ allprojects {
     }
 }
 
+subprojects {
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin('com.android.library')) {
+            android {
+                if (android.namespace == null) {
+                    namespace "com.example.${project.name}"
+                }
+            }
+        }
+    }
+    // Add this block to remove the deprecated 'package' attribute from AndroidManifest.xml
+    // for subprojects that are Android libraries.
+    if (project.plugins.hasPlugin('com.android.library')) {
+        project.tasks.withType(com.android.build.gradle.tasks.ProcessLibraryManifest.class).configureEach { task ->
+            task.doLast {
+                def manifestFile = task.manifestOutputDirectory.file("AndroidManifest.xml").get().asFile
+                def manifestText = manifestFile.text
+                // Remove the package attribute from the manifest tag
+                manifestText = manifestText.replaceAll(/(<manifest[^>]*?)package="[^"]*?"/, '$1')
+                manifestFile.text = manifestText
+            }
+        }
+    }
+}
+
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"

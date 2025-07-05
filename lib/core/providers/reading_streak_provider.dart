@@ -74,15 +74,16 @@ class ReadingStreakNotifier extends StateNotifier<ReadingStreak?> {
 
     debugPrint('[ReadingStreakNotifier] Is new day: $isNewDay');
 
-    // If goal is achieved and it's either a new day or goal wasn't achieved today
-    if (minutesRead >= dailyGoal && (isNewDay || !state!.goalAchievedToday)) {
+    // If goal is achieved for today
+    if (minutesRead >= dailyGoal) {
       debugPrint('[ReadingStreakNotifier] Goal achieved! Updating streak...');
-
+      
+      // If goal wasn't previously achieved today, increment the streak immediately
       int newStreak = state!.currentStreak;
-      if (isNewDay) {
+      if (!state!.goalAchievedToday) {
         newStreak += 1;
         debugPrint(
-            '[ReadingStreakNotifier] New day, incrementing streak to: $newStreak');
+            '[ReadingStreakNotifier] Goal achieved for the first time today, incrementing streak to: $newStreak');
       }
 
       state = state!.copyWith(

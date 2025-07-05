@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qine_corner/core/models/reading_goal.dart';
+import 'package:qine_corner/core/services/notification_service.dart';
 
 class ReadingGoalNotifier extends StateNotifier<ReadingGoal?> {
   final SharedPreferences _prefs;
@@ -60,6 +61,13 @@ class ReadingGoalNotifier extends StateNotifier<ReadingGoal?> {
     state = goal;
     await _saveGoal();
     print('Saved new goal: ${goal.dailyMinutes} minutes');
+
+    if (goal.notificationsEnabled) {
+      await NotificationService().scheduleReadingGoalReminder(
+        time: goal.notificationTime,
+        dailyMinutes: goal.dailyMinutes,
+      );
+    }
   }
 
   Future<void> updateGoal(int minutes) async {

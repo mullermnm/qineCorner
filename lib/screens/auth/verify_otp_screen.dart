@@ -65,8 +65,24 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
       await Future.delayed(const Duration(seconds: 2)); // Simulate API call
 
       if (!mounted) return;
-
-      widget.onVerificationComplete?.call();
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Verification successful'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // First try to call the completion callback if provided
+      if (widget.onVerificationComplete != null) {
+        widget.onVerificationComplete?.call();
+      } else {
+        // If no callback is provided, navigate to home
+        if (mounted) {
+          GoRouter.of(context).go('/home');
+        }
+      }
     } catch (e) {
       if (!mounted) return;
 

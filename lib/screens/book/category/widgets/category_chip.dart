@@ -20,6 +20,10 @@ class CategoryChip extends StatelessWidget {
         return Icons.person;
       case 'church':
         return Icons.church;
+      case 'novel':
+        return Icons.book;
+      case 'heart':
+        return Icons.favorite;
       case 'books':
         return Icons.library_books;
       case 'baby':

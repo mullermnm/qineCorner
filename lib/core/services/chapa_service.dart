@@ -7,7 +7,8 @@ import 'package:qine_corner/core/config/chapa_config.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class ChapaService {
-  static const String baseUrl = 'https://api.chapa.co/v1';
+  // Use the baseUrl from ChapaConfig for consistency
+  static String get baseUrl => ChapaConfig.baseUrl;
   
   // Initialize a payment transaction
   static Future<Map<String, dynamic>> initializeTransaction({
@@ -18,24 +19,28 @@ class ChapaService {
     required String phone,
     String? txRef,
     String? callbackUrl,
+    String? returnUrl,
     String currency = 'ETB',
     String? title,
     String? description,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/transaction/initialize');
+      final url = Uri.parse(ChapaConfig.initializeUrl);
       
-      print('DEBUG: Preparing Chapa payment without email field');
+      print('DEBUG: Preparing Chapa payment');
       
-      // Create request body without email
       final Map<String, dynamic> requestBody = {
         'amount': amount,
         'currency': currency,
         'phone_number': phone,
         'tx_ref': txRef ?? _generateTxRef(),
         'callback_url': callbackUrl ?? 'https://qinecorner.com/payment-callback',
-        'return_url': callbackUrl ?? 'https://qinecorner.com/payment-callback',
+        'return_url': returnUrl ?? callbackUrl ?? 'https://qinecorner.com/payment-callback',
       };
+      
+      if (email != null && email.isNotEmpty) {
+        requestBody['email'] = email;
+      }
       
       // Only add optional fields if they're provided and valid
       if (firstName != null && firstName.isNotEmpty) {
@@ -82,12 +87,12 @@ class ChapaService {
   // Verify a transaction status
   static Future<Map<String, dynamic>> verifyTransaction(String txRef) async {
     try {
-      final url = Uri.parse('$baseUrl/transaction/verify/$txRef');
+      final url = Uri.parse('${ChapaConfig.verifyUrl}/$txRef');
       
       final response = await http.get(
         url,
         headers: {
-          'Authorization': 'Bearer ${ChapaConfig.publicKey}',
+          'Authorization': 'Bearer ${ChapaConfig.secretKey}',
           'Content-Type': 'application/json',
         },
       );
@@ -103,13 +108,13 @@ class ChapaService {
   }
   
   // Open payment page in a WebView
-  static Future<bool> openPaymentPage({
+  static Future<void> openPaymentPage({
     required BuildContext context,
     required String checkoutUrl,
     required String txRef,
     required Function(bool isSuccess) onComplete,
   }) async {
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ChapaWebView(
@@ -119,14 +124,8 @@ class ChapaService {
         ),
       ),
     );
-    
-    // If result is already determined, return it
-    if (result == true || result == false) {
-      onComplete(result);
-      return result;
-    }
-    
-    // Otherwise, verify the transaction status
+
+    // After the WebView is closed, always verify the transaction status
     try {
       print('DEBUG: Verifying payment status for txRef: $txRef');
       final verifyResponse = await verifyTransaction(txRef);
@@ -140,11 +139,9 @@ class ChapaService {
       
       print('DEBUG: Payment verification result: $isSuccess');
       onComplete(isSuccess);
-      return isSuccess;
     } catch (e) {
       print('DEBUG: Payment verification error: $e');
       onComplete(false);
-      return false;
     }
   }
 
@@ -178,8 +175,7 @@ class ChapaWebView extends StatefulWidget {
 class _ChapaWebViewState extends State<ChapaWebView> {
   late WebViewController controller;
   bool isLoading = true;
-  bool _isRedirected = false;
-  
+
   @override
   void initState() {
     super.initState();
@@ -192,13 +188,13 @@ class _ChapaWebViewState extends State<ChapaWebView> {
             setState(() {
               isLoading = true;
             });
-            
-            // Check for success indicators in URL
-            if (!_isRedirected && _isSuccessUrl(url)) {
-              _isRedirected = true;
-              print('DEBUG: Payment success detected in URL');
-              // Return success and close WebView
-              Navigator.pop(context, true);
+
+            // When the callback URL is reached, the payment process is complete.
+            // Close the WebView to trigger the verification API call.
+            if (url.startsWith(widget.callbackUrl)) {
+              print(
+                  'DEBUG: Callback URL reached. Closing WebView for verification.');
+              Navigator.pop(context);
             }
           },
           onPageFinished: (String url) {
@@ -206,33 +202,15 @@ class _ChapaWebViewState extends State<ChapaWebView> {
             setState(() {
               isLoading = false;
             });
-            
-            // Double-check URL for success indicators
-            if (!_isRedirected && _isSuccessUrl(url)) {
-              _isRedirected = true;
-              print('DEBUG: Payment success detected in finished page');
-              // Return success and close WebView
-              context.go('/settings');
-            }
           },
           onWebResourceError: (WebResourceError error) {
             print('WebView error: ${error.description}');
+            // Optionally, you could pop with a failure state here
+            // if web loading errors should abort the payment.
           },
         ),
       )
       ..loadRequest(Uri.parse(widget.checkoutUrl));
-  }
-  
-  bool _isSuccessUrl(String url) {
-    // Check multiple patterns that might indicate success
-    return url.startsWith(widget.callbackUrl) ||
-        url.contains('success') ||
-        url.contains('callback') ||
-        url.contains('status=success') ||
-        url.contains('status=paid') ||
-        url.contains('payment_confirmed') ||
-        url.contains('transaction/verify') ||
-        url.contains(widget.txRef);
   }
   
   @override

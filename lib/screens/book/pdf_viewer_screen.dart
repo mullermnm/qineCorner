@@ -6,7 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:qine_corner/core/api/api_config.dart';
 import 'package:qine_corner/core/models/note.dart';
 import 'package:qine_corner/core/providers/notes_provider.dart';
+import 'package:qine_corner/screens/book/widgets/streak_animation_dialog.dart';
 import 'package:qine_corner/screens/goal/widgets/goal_congratulations_dialog.dart';
+import 'package:qine_corner/features/milestones/presentation/providers/milestone_provider.dart';
+import 'package:qine_corner/features/milestones/domain/milestone_model.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../core/models/book.dart';
 import '../../core/theme/app_colors.dart';
@@ -17,7 +20,10 @@ import '../notes/notes_screen.dart';
 import '../../core/providers/reading_goal_provider.dart';
 import '../../core/providers/recent_books_provider.dart';
 import '../../core/providers/reading_streak_provider.dart';
-import 'widgets/streak_animation_dialog.dart';
+import 'package:qine_corner/core/providers/auth_provider.dart';
+import 'package:qine_corner/features/milestones/presentation/widgets/milestone_card.dart';
+import 'package:qine_corner/features/quotes/domain/models/quote.dart';
+import 'package:qine_corner/features/quotes/presentation/screens/quote_share_screen.dart';
 import '../../core/config/app_config.dart';
 
 class PdfViewerScreen extends ConsumerStatefulWidget {
@@ -43,6 +49,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   bool _goalAchieved = false;
   bool _hasShownGoalDialog = false;
   String? _selectedText;
+  int _totalPageCount = 0;
 
   String get _fullPdfUrl => AppConfig.getPdfUrl(widget.book.filePath);
 
@@ -54,14 +61,14 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(recentBooksProvider.notifier).addRecentBook(widget.book);
     });
-    
+
     print('Loading PDF from: $_fullPdfUrl');
   }
 
   @override
   void dispose() {
     if (!mounted) return;
-    
+
     // Save reading progress before disposing
     try {
       final elapsedMinutes = _elapsedSeconds ~/ 60;
@@ -75,7 +82,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     } catch (e) {
       debugPrint('Error saving reading progress: $e');
     }
-    
+
     _readingTimer?.cancel();
     _pdfViewerController.dispose();
     super.dispose();
@@ -119,20 +126,21 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
 
   void _saveReadingProgress(int minutes) {
     if (!mounted) return;
-    
+
     try {
       debugPrint('[_saveReadingProgress] Started with $minutes minutes');
-      
+
       // Update reading goal progress
       final goalNotifier = ref.read(readingGoalProvider.notifier);
       goalNotifier.addReadingTime(minutes);
-      
+
       // Get current progress and goal
       final todayProgress = goalNotifier.getTodayProgress();
       final goal = ref.read(readingGoalProvider);
-      
-      debugPrint('[_saveReadingProgress] Progress: $todayProgress, Goal: ${goal?.dailyMinutes}');
-      
+
+      debugPrint(
+          '[_saveReadingProgress] Progress: $todayProgress, Goal: ${goal?.dailyMinutes}');
+
       if (goal != null && todayProgress >= goal.dailyMinutes) {
         debugPrint('[_saveReadingProgress] Goal achieved, showing dialogs');
         _handleGoalAchieved(todayProgress, goal.dailyMinutes);
@@ -171,34 +179,39 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     );
   }
 
-  Future<void> _updateStreakAndShowAnimation(int todayProgress, int dailyGoal) async {
+  Future<void> _updateStreakAndShowAnimation(
+      int todayProgress, int dailyGoal) async {
     try {
       debugPrint('[_updateStreakAndShowAnimation] Started');
-      
+
       // Update streak
       final streakNotifier = ref.read(readingStreakProvider.notifier);
       final streakBefore = ref.read(readingStreakProvider);
       final streakCountBefore = streakBefore?.currentStreak ?? 0;
-      
-      debugPrint('[_updateStreakAndShowAnimation] Before update - Streak: $streakCountBefore');
-      
+
+      debugPrint(
+          '[_updateStreakAndShowAnimation] Before update - Streak: $streakCountBefore');
+
       // Record reading progress
       await streakNotifier.recordReadingProgress(todayProgress, dailyGoal);
-      
+
       if (!mounted) return;
-      
+
       final streakAfter = ref.read(readingStreakProvider);
       if (streakAfter == null) {
-        debugPrint('[_updateStreakAndShowAnimation] Error: Streak is null after update');
+        debugPrint(
+            '[_updateStreakAndShowAnimation] Error: Streak is null after update');
         return;
       }
-      
+
       final streakCountAfter = streakAfter.currentStreak;
-      debugPrint('[_updateStreakAndShowAnimation] After update - Streak: $streakCountAfter');
-      
+      debugPrint(
+          '[_updateStreakAndShowAnimation] After update - Streak: $streakCountAfter');
+
       // Show streak animation if streak increased
       if (streakCountAfter > streakCountBefore && mounted) {
-        debugPrint('[_updateStreakAndShowAnimation] Showing streak animation dialog');
+        debugPrint(
+            '[_updateStreakAndShowAnimation] Showing streak animation dialog');
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -213,7 +226,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
           ),
         );
       } else {
-        debugPrint('[_updateStreakAndShowAnimation] No streak increase: before=$streakCountBefore, after=$streakCountAfter');
+        debugPrint(
+            '[_updateStreakAndShowAnimation] No streak increase: before=$streakCountBefore, after=$streakCountAfter');
       }
     } catch (e, stackTrace) {
       debugPrint('[_updateStreakAndShowAnimation] Error: $e');
@@ -310,7 +324,43 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       _selectedText = text;
     });
     if (text != null && text.isNotEmpty) {
-      _showNoteCreationDialog(text);
+      // Show a dialog or a bottom sheet with options: Add Note or Share Quote
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.note_add),
+                title: const Text('Add Note'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showNoteCreationDialog(text);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share Quote'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final authState = ref.read(authNotifierProvider).valueOrNull;
+                  final userName = authState?.user?.name ?? 'Anonymous';
+                  final quote = Quote(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    text: text,
+                    bookTitle: widget.book.title,
+                    authorName: widget.book.author?.name,
+                    userName: userName,
+                    createdAt: DateTime.now(),
+                  );
+                  context.push('/quotes/share', extra: quote);
+                },
+              ),
+            ],
+          ),
+        ),
+      );
     }
   }
 
@@ -402,6 +452,86 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     setState(() {
       _currentPage = page;
     });
+    _checkMilestones();
+  }
+
+  void _checkMilestones() {
+    final milestoneNotifier = ref.read(milestoneNotifierProvider.notifier);
+    final authState = ref.read(authNotifierProvider).valueOrNull;
+    final currentUserId = authState?.user?.id.toString() ?? 'unknown_user';
+
+    // Milestone: Book Completed
+    if (_currentPage == _totalPageCount && _totalPageCount > 0) {
+      final completedMilestone = Milestone(
+        id: 'book_completed_${widget.book.id}',
+        name: 'Book Completed!',
+        description: 'You finished reading "${widget.book.title}"!',
+        achievedDate: DateTime.now(),
+        type: 'book_completion',
+        userId: currentUserId,
+      );
+      milestoneNotifier.addMilestone(completedMilestone);
+      _showMilestoneAchievedDialog(completedMilestone);
+    }
+
+    // Milestone: Pages Read (example: every 10 pages)
+    if (_currentPage == 10 && _totalPageCount >= 10) {
+      final pagesReadMilestone = Milestone(
+        id: 'pages_read_10_${widget.book.id}',
+        name: 'First 10 Pages!',
+        description:
+            'You\'ve read the first 10 pages of "${widget.book.title}"!',
+        achievedDate: DateTime.now(),
+        type: 'pages_read',
+        userId: currentUserId,
+      );
+      milestoneNotifier.addMilestone(pagesReadMilestone);
+      _showMilestoneAchievedDialog(pagesReadMilestone);
+    }
+  }
+
+  void _showMilestoneAchievedDialog(Milestone milestone) {
+    final GlobalKey repaintBoundaryKey = GlobalKey();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Milestone Achieved!'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MilestoneCard(
+                  milestone: milestone,
+                  repaintBoundaryKey: repaintBoundaryKey,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Congratulations, ${milestone.name}!',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  milestone.description,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Awesome!'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -514,6 +644,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
               setState(() {
                 _isLoading = false;
                 _hasError = false;
+                _totalPageCount = details.document.pages.count;
               });
             },
             onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
@@ -529,7 +660,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
               });
             },
             onTextSelectionChanged: (PdfTextSelectionChangedDetails details) {
-              _onTextSelected(details.selectedText);
+              _onTextSelected(details.selectedText?.toString());
             },
           ),
           if (_isLoading)

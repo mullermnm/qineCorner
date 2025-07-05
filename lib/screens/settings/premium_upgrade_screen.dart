@@ -3,23 +3,30 @@ import 'package:qine_corner/core/theme/app_colors.dart';
 import 'package:qine_corner/common/widgets/primary_button.dart';
 import 'package:qine_corner/screens/payment/payment_screen.dart';
 
-class PremiumUpgradeScreen extends StatefulWidget {
+import 'package:qine_corner/core/config/chapa_config.dart';
+import 'package:qine_corner/core/providers/auth_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:chapasdk/chapasdk.dart';
+import 'package:qine_corner/core/providers/premium_provider.dart';
+
+class PremiumUpgradeScreen extends ConsumerStatefulWidget {
   const PremiumUpgradeScreen({super.key});
 
   @override
-  State<PremiumUpgradeScreen> createState() => _PremiumUpgradeScreenState();
+  ConsumerState<PremiumUpgradeScreen> createState() => _PremiumUpgradeScreenState();
 }
 
-class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen> {
+class _PremiumUpgradeScreenState extends ConsumerState<PremiumUpgradeScreen> {
   int _selectedPlanIndex = 1; // Default to Pro plan
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    final isPremium = ref.watch(premiumProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Upgrade to Premium'),
+        title: Text(isPremium ? 'Your Subscription' : 'Upgrade to Premium'),
         centerTitle: true,
         elevation: 0,
       ),
@@ -28,50 +35,17 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isDark 
-                ? [AppColors.darkBackground, AppColors.darkBackground.withOpacity(0.8)]
+            colors: isDark
+                ? [
+                    AppColors.darkBackground,
+                    AppColors.darkBackground.withOpacity(0.8)
+                  ]
                 : [Colors.white, Colors.grey.shade50],
           ),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Premium Banner
-              _buildPremiumBanner(isDark),
-              const SizedBox(height: 30),
-              
-              // Plan Selection
-              _buildPlanSelection(isDark),
-              const SizedBox(height: 40),
-              
-              // Plan Details
-              _buildPlanFeatures(isDark),
-              const SizedBox(height: 40),
-              
-              // Subscribe Button
-              PrimaryButton(
-                text: 'Subscribe Now',
-                icon: Icons.star,
-                onPressed: _handleSubscribe,
-              ),
-              const SizedBox(height: 12),
-              
-              // Terms and privacy
-              Center(
-                child: Text(
-                  'By subscribing, you agree to our Terms & Privacy Policy',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: isPremium
+            ? _buildPremiumView(isDark)
+            : _buildUpgradeView(isDark),
       ),
     );
   }
@@ -368,11 +342,86 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen> {
     );
   }
 
+  Widget _buildUpgradeView(bool isDark) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Premium Banner
+          _buildPremiumBanner(isDark),
+          const SizedBox(height: 30),
+
+          // Plan Selection
+          _buildPlanSelection(isDark),
+          const SizedBox(height: 40),
+
+          // Plan Details
+          _buildPlanFeatures(isDark),
+          const SizedBox(height: 40),
+
+          // Subscribe Button
+          PrimaryButton(
+            text: 'Subscribe Now',
+            icon: Icons.star,
+            onPressed: _handleSubscribe,
+          ),
+          const SizedBox(height: 12),
+
+          // Terms and privacy
+          Center(
+            child: Text(
+              'By subscribing, you agree to our Terms & Privacy Policy',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumView(bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.verified_user,
+              size: 80,
+              color: Theme.of(context).primaryColor,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'You are a Premium Member!',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Enjoy all the exclusive features of Qine Pro.',
+              style: TextStyle(
+                fontSize: 16,
+                color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _handleSubscribe() {
     final planName = _selectedPlanIndex == 0 ? 'Basic' : 'Qine Pro';
     final price = _selectedPlanIndex == 0 ? 'ETB 100' : 'ETB 300';
-    final period = 'month';  // or 'year' depending on your plans
-    
+    final period = 'month'; // or 'year' depending on your plans
+
     Navigator.push(
       context,
       MaterialPageRoute(

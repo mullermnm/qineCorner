@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qine_corner/common/widgets/primary_button.dart';
 import 'package:qine_corner/common/widgets/secondary_button.dart';
 import 'package:qine_corner/core/services/download_service.dart';
+import 'package:qine_corner/features/book_rating/presentation/widgets/book_ratings_section.dart';
+import 'package:qine_corner/features/book_rating/presentation/widgets/star_rating_widget.dart';
 import '../../core/models/book.dart';
 import '../../core/models/category.dart';
 import '../../core/theme/app_colors.dart';
@@ -154,14 +156,14 @@ class BookDetailScreen extends ConsumerWidget {
                         ),
                         Row(
                           children: [
-                            const Icon(
-                              Icons.star,
-                              color: Colors.amber,
-                              size: 24,
+                            StarRatingWidget(
+                              rating: book.rating ?? 0.0,
+                              size: 18,
+                              activeColor: Colors.amber,
                             ),
                             const SizedBox(width: 4),
                             AppText.body(
-                              '${book.rating}/5',
+                              '${book.rating ?? 0.0}/5',
                               color: isDark
                                   ? AppColors.darkTextSecondary
                                   : AppColors.lightTextSecondary,
@@ -334,6 +336,10 @@ class BookDetailScreen extends ConsumerWidget {
 
                     // More from author section
                     MoreFromAuthor(currentBook: book),
+                    const SizedBox(height: 30),
+                    
+                    // Book ratings section
+                    BookRatingsSection(bookId: book.id),
                     const SizedBox(height: 10),
                   ],
                 ),

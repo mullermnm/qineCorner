@@ -121,6 +121,12 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => context.push('/downloads'),
               ),
               _buildSettingsTile(
+                context,
+                icon: Icons.emoji_events_outlined,
+                title: 'My Achievements',
+                onTap: () => context.push('/milestones'),
+              ),
+              _buildSettingsTile(
                               context,
                 icon: Icons.checklist_rtl_rounded,
                               title: 'Reading Preferences',

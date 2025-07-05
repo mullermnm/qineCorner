@@ -19,9 +19,13 @@ import 'package:qine_corner/core/router/app_router.dart';
 import 'package:qine_corner/core/services/search_service.dart';
 import 'package:qine_corner/core/theme/theme_provider.dart' as themeProvider;
 import 'package:qine_corner/core/services/book_service.dart';
+import 'package:qine_corner/core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Notification Service
+  await NotificationService().initialize();
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();

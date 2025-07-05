@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qine_corner/screens/auth/login_screen.dart';
 import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/core/theme/app_colors.dart';
 import 'package:qine_corner/core/theme/auth_constants.dart';
@@ -47,10 +48,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
+      // Make sure to pass the email to the registration
       final result = await ref.read(authNotifierProvider.notifier).register(
             name: _nameController.text,
             phone: _phoneController.text,
             password: _passwordController.text,
+            email: _emailController.text, // Add email parameter
           );
 
       if (mounted) {
@@ -67,9 +70,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // Show error in UI and print to console for debugging
+        print('Registration error: $e');
         setState(() {
           _error = e.toString();
         });
+        // Show a snackbar with the error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_error ?? 'Registration failed'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -151,6 +164,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextFormField(
                         controller: _emailController,
                         textInputAction: TextInputAction.next,
+                        keyboardType: TextInputType.emailAddress,
                         style: TextStyle(color: Colors.black),
                         decoration: AuthConstants.textFieldDecoration(
                           labelText: "Email",
@@ -163,6 +177,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
+                          }
+                          // Add email format validation
+                          final emailRegex =
+                              RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          if (!emailRegex.hasMatch(value)) {
+                            return 'Please enter a valid email address';
                           }
                           return null;
                         },
@@ -281,24 +301,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           style: AuthConstants.elevatedButtonStyle(),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: _isLoading 
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        "SIGN UP",
-                                        style: AuthConstants.buttonTextStyle,
-                                      ),
-                                    ],
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 3,
+                                    ),
                                   )
                                 : const Text(
                                     "SIGN UP",
@@ -307,6 +317,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ),
                       ),
+                      if (_error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -315,14 +344,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    "Already have an Account? ",
-                    style: TextStyle(color: AuthConstants.kPrimaryColor),
-                  ),
                   GestureDetector(
                     onTap: () => context.go('/login'),
                     child: const Text(
-                      "Sign In",
+                      "Already have an account? Sign In",
                       style: AuthConstants.linkTextStyle,
                     ),
                   ),

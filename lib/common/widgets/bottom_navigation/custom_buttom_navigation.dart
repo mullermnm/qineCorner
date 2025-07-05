@@ -7,12 +7,6 @@ import '../../../core/providers/books_provider.dart';
 import '../../../core/providers/article_provider.dart';
 import '../../../core/providers/book_club_provider.dart';
 
-// Create Navigator keys for each tab
-final homeNavigatorKey = GlobalKey<NavigatorState>();
-final marketNavigatorKey = GlobalKey<NavigatorState>();
-final assetsNavigatorKey = GlobalKey<NavigatorState>();
-final menuNavigatorKey = GlobalKey<NavigatorState>();
-
 class ScaffoldWithBottomNavBar extends ConsumerStatefulWidget {
   const ScaffoldWithBottomNavBar({
     super.key,
@@ -22,10 +16,12 @@ class ScaffoldWithBottomNavBar extends ConsumerStatefulWidget {
   final Widget child;
 
   @override
-  ConsumerState<ScaffoldWithBottomNavBar> createState() => _ScaffoldWithBottomNavBarState();
+  ConsumerState<ScaffoldWithBottomNavBar> createState() =>
+      _ScaffoldWithBottomNavBarState();
 }
 
-class _ScaffoldWithBottomNavBarState extends ConsumerState<ScaffoldWithBottomNavBar> {
+class _ScaffoldWithBottomNavBarState
+    extends ConsumerState<ScaffoldWithBottomNavBar> {
   int _currentIndex = 0;
   bool _isRefreshing = false;
 
@@ -35,26 +31,6 @@ class _ScaffoldWithBottomNavBarState extends ConsumerState<ScaffoldWithBottomNav
     ('/book-clubs', 'Book Clubs', Icons.groups_rounded),
     ('/settings', 'Profile', Icons.person_rounded),
   ];
-
-  Future<bool> _systemBackButtonPressed() async {
-    final currentNavigatorKey = _getCurrentNavigatorKey();
-    if (currentNavigatorKey.currentState?.canPop() == true) {
-      currentNavigatorKey.currentState?.pop();
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  GlobalKey<NavigatorState> _getCurrentNavigatorKey() {
-    switch (_currentIndex) {
-      case 0: return homeNavigatorKey;
-      case 1: return marketNavigatorKey;
-      case 2: return assetsNavigatorKey;
-      case 3: return menuNavigatorKey;
-      default: return homeNavigatorKey;
-    }
-  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -128,8 +104,22 @@ class _ScaffoldWithBottomNavBarState extends ConsumerState<ScaffoldWithBottomNav
       _currentIndex = selectedIndex;
     }
 
-    return WillPopScope(
-      onWillPop: _systemBackButtonPressed,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+
+        final router = GoRouter.of(context);
+        final location = GoRouterState.of(context).uri.toString();
+
+        if (location == '/home' || location == '/') {
+          SystemNavigator.pop();
+        } else if (router.canPop()) {
+          router.pop();
+        } else {
+          router.go('/home');
+        }
+      },
       child: Scaffold(
       body: widget.child,
         bottomNavigationBar: Padding(

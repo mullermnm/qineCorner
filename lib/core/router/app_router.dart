@@ -5,6 +5,9 @@ import 'package:qine_corner/core/models/book.dart';
 import 'package:qine_corner/core/providers/library_provider.dart';
 import 'package:qine_corner/core/providers/auth_provider.dart';
 import 'package:qine_corner/core/providers/reading_goal_provider.dart';
+import 'package:qine_corner/features/quotes/domain/models/quote.dart';
+import 'package:qine_corner/features/quotes/presentation/screens/manual_quote_entry_screen.dart';
+import 'package:qine_corner/features/quotes/presentation/screens/quote_share_screen.dart';
 import 'package:qine_corner/screens/articles/articles_screen.dart';
 import 'package:qine_corner/screens/articles/create_article_screen.dart';
 import 'package:qine_corner/screens/articles/article_detail_screen.dart';
@@ -47,6 +50,30 @@ import '../../screens/about/about_screen.dart';
 import '../../screens/about/terms_screen.dart';
 import '../../screens/about/privacy_screen.dart';
 import '../../screens/payment/payment_screen.dart';
+import '../../screens/payment/subscription_success_screen.dart';
+import 'package:qine_corner/features/milestones/presentation/screens/my_achievements_screen.dart';
+import 'package:qine_corner/features/articles_leaderboard/screens/articles_leaderboard_screen.dart';
+
+class GoRouterObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _saveLastRoute(route.settings.name);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (newRoute != null) {
+      _saveLastRoute(newRoute.settings.name);
+    }
+  }
+
+  Future<void> _saveLastRoute(String? routeName) async {
+    if (routeName != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_route', routeName);
+    }
+  }
+}
 
 class AppRouter {
   static final _rootNavigatorKey =
@@ -68,6 +95,9 @@ class AppRouter {
           : hasReadingGoal
               ? '/home'
               : '/goal-setup',
+      observers: [
+        GoRouterObserver(),
+      ],
       routes: [
         GoRoute(
           path: '/onboarding',
@@ -338,6 +368,28 @@ class AppRouter {
               builder: (context, state) => const PremiumUpgradeScreen(),
             ),
             GoRoute(
+              path: '/milestones',
+              builder: (context, state) => const MyAchievementsScreen(),
+            ),
+            GoRoute(
+              path: '/leaderboard',
+              builder: (context, state) => const ArticlesLeaderboardScreen(),
+            ),
+            GoRoute(
+              path: '/quotes/manual-entry',
+              builder: (context, state) => const ManualQuoteEntryScreen(),
+            ),
+            GoRoute(
+              path: '/quotes/share',
+              builder: (context, state) {
+                final quote = state.extra as Quote?;
+                if (quote == null) {
+                  return const ErrorScreen(error: 'Quote data not found');
+                }
+                return QuoteShareScreen(quote: quote);
+              },
+            ),
+            GoRoute(
               path: '/payment',
               builder: (context, state) {
                 final args = state.extra as Map<String, dynamic>;
@@ -348,15 +400,29 @@ class AppRouter {
                 );
               },
             ),
+            GoRoute(
+              path: '/subscription/success',
+              builder: (context, state) => SubscriptionSuccessScreen(
+                planName: state.uri.queryParameters['planName'] ?? 'Premium',
+                planPeriod:
+                    state.uri.queryParameters['planPeriod'] ?? 'Monthly',
+                txRef: state.uri.queryParameters['txRef'] ?? '',
+              ),
+            ),
           ],
         ),
       ],
       redirect: (context, state) async {
         final prefs = await SharedPreferences.getInstance();
+        final lastRoute = prefs.getString('last_route');
         final isFirstTime = prefs.getBool('first_time') ?? true;
         final container = ProviderScope.containerOf(context);
         final hasGoal = container.read(readingGoalProvider) != null;
         final authState = container.read(authNotifierProvider);
+
+        if (lastRoute != null && !isFirstTime) {
+          return lastRoute;
+        }
 
         final isLoggedIn = authState.when(
           data: (state) => state != null && state.token.isNotEmpty,
